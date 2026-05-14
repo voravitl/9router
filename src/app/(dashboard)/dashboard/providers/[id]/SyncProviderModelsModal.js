@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import PropTypes from "prop-types";
 import { Button, Modal } from "@/shared/components";
 
 function normalizeModel(item) {
