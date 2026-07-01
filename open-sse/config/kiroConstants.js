@@ -222,6 +222,13 @@ export function resolveKiroModel(model) {
     thinking = true;
     upstream = stripThinkingSuffix(upstream);
   }
+  // Normalize a client-facing dash version to Kiro's dot form
+  // (claude-opus-4-8 -> claude-opus-4.8). Claude Code only recognises the dash
+  // spelling of Claude ids, so callers may send it; Kiro upstream only accepts the
+  // dot spelling. Anchored + family-scoped, and the minor part is capped at 1-2
+  // digits so a date-suffixed id (claude-opus-4-20250514 / claude-opus-4-1-20250805)
+  // and non-claude ids stay untouched.
+  upstream = upstream.replace(/^(claude-(?:opus|sonnet|haiku))-(\d+)-(\d{1,2})$/, "$1-$2.$3");
   return { upstream, agentic, thinking };
 }
 
