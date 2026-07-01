@@ -1,0 +1,547 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1782870366120,
+  "projectRoot": "/Users/voravit.l/dev/9router",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "JavaScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "jsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "express",
+        "version": "5.2.1",
+        "category": "backend"
+      },
+      {
+        "name": "next",
+        "version": "16.1.6",
+        "category": "fullstack"
+      },
+      {
+        "name": "react",
+        "version": "19.2.4",
+        "category": "frontend"
+      },
+      {
+        "name": "react-dom",
+        "version": "19.2.4",
+        "category": "frontend"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "npm run build",
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "npm run dev",
+    "scripts": {
+      "dev": "next dev --webpack --port 20127",
+      "build": "next build --webpack",
+      "start": "next start",
+      "dev:bun": "bun --bun next dev --webpack --port 20127",
+      "build:bun": "bun --bun next build --webpack",
+      "start:bun": "bun ./.next/standalone/server.js",
+      "cli:pack": "npm --prefix cli run pack:cli",
+      "cli:publish": "npm --prefix cli run publish:cli"
+    }
+  },
+  "conventions": {
+    "namingStyle": "camelCase",
+    "importStyle": "ES modules",
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "public",
+      "scripts",
+      "src",
+      "tests"
+    ],
+    "gitBranches": {
+      "defaultBranch": "master",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "cli": {
+      "path": "cli",
+      "purpose": null,
+      "fileCount": 6,
+      "lastAccessed": 1782870366072,
+      "keyFiles": [
+        "LICENSE",
+        "README.md",
+        "cli.js",
+        "package.json"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 1,
+      "lastAccessed": 1782870366073,
+      "keyFiles": [
+        "ARCHITECTURE.md"
+      ]
+    },
+    "gitbook": {
+      "path": "gitbook",
+      "purpose": null,
+      "fileCount": 5,
+      "lastAccessed": 1782870366084,
+      "keyFiles": [
+        "jsconfig.json",
+        "next.config.mjs",
+        "package.json",
+        "postcss.config.mjs"
+      ]
+    },
+    "i18n": {
+      "path": "i18n",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1782870366093,
+      "keyFiles": [
+        "README.ja-JP.md",
+        "README.ru.md",
+        "README.vi.md",
+        "README.zh-CN.md"
+      ]
+    },
+    "images": {
+      "path": "images",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1782870366112,
+      "keyFiles": [
+        "9router.png",
+        "fusion-combo-ui.png"
+      ]
+    },
+    "open-sse": {
+      "path": "open-sse",
+      "purpose": null,
+      "fileCount": 3,
+      "lastAccessed": 1782870366113,
+      "keyFiles": [
+        "AGENTS.md",
+        "index.js"
+      ]
+    },
+    "public": {
+      "path": "public",
+      "purpose": "Public files",
+      "fileCount": 7,
+      "lastAccessed": 1782870366113,
+      "keyFiles": [
+        "favicon.svg",
+        "file.svg",
+        "globe.svg",
+        "next.svg",
+        "sw.js"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 4,
+      "lastAccessed": 1782870366114,
+      "keyFiles": [
+        "injectDisplayToRegistry.mjs",
+        "migrate-registry.mjs",
+        "test-combo-autoswitch.mjs",
+        "translate-readme.js"
+      ]
+    },
+    "skills": {
+      "path": "skills",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1782870366114,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 2,
+      "lastAccessed": 1782870366114,
+      "keyFiles": [
+        "dashboardGuard.js",
+        "proxy.js"
+      ]
+    },
+    "tests": {
+      "path": "tests",
+      "purpose": "Test files",
+      "fileCount": 4,
+      "lastAccessed": 1782870366114,
+      "keyFiles": [
+        "README.md",
+        "package.json",
+        "vitest.config.js"
+      ]
+    },
+    "cli/scripts": {
+      "path": "cli/scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 2,
+      "lastAccessed": 1782870366115,
+      "keyFiles": [
+        "build-cli.js",
+        "buildMitm.js"
+      ]
+    },
+    "cli/src": {
+      "path": "cli/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1782870366115,
+      "keyFiles": []
+    },
+    "gitbook/app": {
+      "path": "gitbook/app",
+      "purpose": "Application code",
+      "fileCount": 3,
+      "lastAccessed": 1782870366118,
+      "keyFiles": [
+        "globals.css",
+        "layout.js",
+        "page.js"
+      ]
+    },
+    "gitbook/components": {
+      "path": "gitbook/components",
+      "purpose": "UI components",
+      "fileCount": 6,
+      "lastAccessed": 1782870366118,
+      "keyFiles": [
+        "DocsContent.js",
+        "DocsHeader.js",
+        "DocsLayout.js"
+      ]
+    },
+    "gitbook/lib": {
+      "path": "gitbook/lib",
+      "purpose": "Library code",
+      "fileCount": 1,
+      "lastAccessed": 1782870366118,
+      "keyFiles": [
+        "content.js"
+      ]
+    },
+    "open-sse/config": {
+      "path": "open-sse/config",
+      "purpose": "Configuration files",
+      "fileCount": 14,
+      "lastAccessed": 1782870366119,
+      "keyFiles": [
+        "appConstants.js",
+        "codexInstructions.js",
+        "constants.js"
+      ]
+    },
+    "open-sse/services": {
+      "path": "open-sse/services",
+      "purpose": "Business logic services",
+      "fileCount": 13,
+      "lastAccessed": 1782870366119,
+      "keyFiles": [
+        "accountFallback.js",
+        "combo.js",
+        "compact.js"
+      ]
+    },
+    "src/app": {
+      "path": "src/app",
+      "purpose": "Application code",
+      "fileCount": 5,
+      "lastAccessed": 1782870366120,
+      "keyFiles": [
+        "favicon.ico",
+        "globals.css",
+        "layout.js"
+      ]
+    },
+    "src/lib": {
+      "path": "src/lib",
+      "purpose": "Library code",
+      "fileCount": 9,
+      "lastAccessed": 1782870366120,
+      "keyFiles": [
+        "appUpdater.js",
+        "consoleLogBuffer.js",
+        "dataDir.js"
+      ]
+    },
+    "src/models": {
+      "path": "src/models",
+      "purpose": "Data models",
+      "fileCount": 1,
+      "lastAccessed": 1782870366120,
+      "keyFiles": [
+        "index.js"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/app/(dashboard)/dashboard/providers/[id]/page.js",
+      "accessCount": 5,
+      "lastAccessed": 1782914865467,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 3,
+      "lastAccessed": 1782885258340,
+      "type": "file"
+    },
+    {
+      "path": "src/dashboardGuard.js",
+      "accessCount": 3,
+      "lastAccessed": 1782911523155,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/providers/[id]/models/route.js",
+      "accessCount": 3,
+      "lastAccessed": 1782914878289,
+      "type": "file"
+    },
+    {
+      "path": ".env",
+      "accessCount": 2,
+      "lastAccessed": 1782870456409,
+      "type": "file"
+    },
+    {
+      "path": "src/app/(dashboard)/dashboard/providers/[id]/CompatibleModelsSection.js",
+      "accessCount": 2,
+      "lastAccessed": 1782871605999,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/sttCore.js",
+      "accessCount": 2,
+      "lastAccessed": 1782885323379,
+      "type": "file"
+    },
+    {
+      "path": "graphify-out/GRAPH_REPORT.md",
+      "accessCount": 2,
+      "lastAccessed": 1782914541277,
+      "type": "file"
+    },
+    {
+      "path": "docker-compose.yml",
+      "accessCount": 1,
+      "lastAccessed": 1782870432559,
+      "type": "file"
+    },
+    {
+      "path": "DOCKER.md",
+      "accessCount": 1,
+      "lastAccessed": 1782870432996,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/providerNormalization.js",
+      "accessCount": 1,
+      "lastAccessed": 1782871028332,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/config/providers.js",
+      "accessCount": 1,
+      "lastAccessed": 1782871110793,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/providers/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782871989023,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/models/custom/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782872003090,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/auth/login/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782872024297,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/providers/registry/kiro.js",
+      "accessCount": 1,
+      "lastAccessed": 1782876841738,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/oauth/kiro/import/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782876856613,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/oauth/kiro/import-cli-proxy/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782876856900,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/providers/registry/ollama.js",
+      "accessCount": 1,
+      "lastAccessed": 1782877053469,
+      "type": "file"
+    },
+    {
+      "path": "src/shared/constants/providers.js",
+      "accessCount": 1,
+      "lastAccessed": 1782877070890,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/services/kiroModels.js",
+      "accessCount": 1,
+      "lastAccessed": 1782877822059,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/translator/request/claude-to-kiro.js",
+      "accessCount": 1,
+      "lastAccessed": 1782877841694,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/providers/[id]/test/testUtils.js",
+      "accessCount": 1,
+      "lastAccessed": 1782878731654,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/keys/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782879002558,
+      "type": "file"
+    },
+    {
+      "path": "src/shared/constants/providersDisplay.js",
+      "accessCount": 1,
+      "lastAccessed": 1782879156776,
+      "type": "file"
+    },
+    {
+      "path": "custom-server.js",
+      "accessCount": 1,
+      "lastAccessed": 1782879833511,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/services/oauthCredentialManager.js",
+      "accessCount": 1,
+      "lastAccessed": 1782884808109,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/executors/grok-web.js",
+      "accessCount": 1,
+      "lastAccessed": 1782884824649,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/services/copilotModels.js",
+      "accessCount": 1,
+      "lastAccessed": 1782884862963,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/imageGenerationCore.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885271476,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/ttsCore.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885275588,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/embeddingsCore.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885276009,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/search/index.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885280649,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/fetch/index.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885281386,
+      "type": "file"
+    },
+    {
+      "path": "src/app/api/v1/route.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885299050,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/services/combo.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885311965,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/handlers/imageProviders/comfyui.js",
+      "accessCount": 1,
+      "lastAccessed": 1782885328750,
+      "type": "file"
+    },
+    {
+      "path": "skills/README.md",
+      "accessCount": 1,
+      "lastAccessed": 1782911228982,
+      "type": "file"
+    },
+    {
+      "path": "skills/9router/SKILL.md",
+      "accessCount": 1,
+      "lastAccessed": 1782911237680,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

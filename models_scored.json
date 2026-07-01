@@ -1,0 +1,1470 @@
+{
+  "source": "http://localhost:20128/v1/models (9router)",
+  "generated_note": "score = 0-100 capability ESTIMATE, not a live benchmark. confidence low = model newer than assistant knowledge cutoff (Jan 2026), score extrapolated from tier/version. See 'basis' per row.",
+  "total": 133,
+  "models": [
+    {
+      "id": "kr/claude-opus-4.8-thinking",
+      "provider": "kr",
+      "score": 95,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5 (SWE-bench/AAII trend)"
+    },
+    {
+      "id": "kr/claude-opus-4.8-thinking-agentic",
+      "provider": "kr",
+      "score": 95,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5 (SWE-bench/AAII trend)"
+    },
+    {
+      "id": "kr/claude-opus-4.7-thinking",
+      "provider": "kr",
+      "score": 94,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.7-thinking-agentic",
+      "provider": "kr",
+      "score": 94,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.6-thinking",
+      "provider": "kr",
+      "score": 93,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.6-thinking-agentic",
+      "provider": "kr",
+      "score": 93,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.8",
+      "provider": "kr",
+      "score": 93,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5 (SWE-bench/AAII trend)"
+    },
+    {
+      "id": "kr/claude-opus-4.8-agentic",
+      "provider": "kr",
+      "score": 93,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5 (SWE-bench/AAII trend)"
+    },
+    {
+      "id": "gc/gemini-3.1-pro-preview",
+      "provider": "gc",
+      "score": 92,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Gemini 3 Pro"
+    },
+    {
+      "id": "gemini/gemini-3.1-pro-preview",
+      "provider": "gemini",
+      "score": 92,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Gemini 3 Pro"
+    },
+    {
+      "id": "kr/claude-opus-4.5-thinking",
+      "provider": "kr",
+      "score": 92,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Opus 4.5 ~ frontier top, SWE-bench ~80%+"
+    },
+    {
+      "id": "kr/claude-opus-4.5-thinking-agentic",
+      "provider": "kr",
+      "score": 92,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "Opus 4.5 ~ frontier top, SWE-bench ~80%+"
+    },
+    {
+      "id": "kr/claude-opus-4.7",
+      "provider": "kr",
+      "score": 92,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.7-agentic",
+      "provider": "kr",
+      "score": 92,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.6",
+      "provider": "kr",
+      "score": 91,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "kr/claude-opus-4.6-agentic",
+      "provider": "kr",
+      "score": 91,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "extrapolated above Opus 4.5"
+    },
+    {
+      "id": "gc/gemini-3-pro-preview",
+      "provider": "gc",
+      "score": 90,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 3 Pro ~ frontier (post-cutoff)"
+    },
+    {
+      "id": "kr/claude-opus-4.5",
+      "provider": "kr",
+      "score": 90,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Opus 4.5 ~ frontier top, SWE-bench ~80%+"
+    },
+    {
+      "id": "kr/claude-opus-4.5-agentic",
+      "provider": "kr",
+      "score": 90,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "Opus 4.5 ~ frontier top, SWE-bench ~80%+"
+    },
+    {
+      "id": "kr/claude-sonnet-5-thinking",
+      "provider": "kr",
+      "score": 90,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "extrapolated above Sonnet 4.6"
+    },
+    {
+      "id": "kr/claude-sonnet-5-thinking-agentic",
+      "provider": "kr",
+      "score": 90,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "extrapolated above Sonnet 4.6"
+    },
+    {
+      "id": "kr/claude-sonnet-5",
+      "provider": "kr",
+      "score": 88,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Sonnet 4.6"
+    },
+    {
+      "id": "kr/claude-sonnet-5-agentic",
+      "provider": "kr",
+      "score": 88,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "extrapolated above Sonnet 4.6"
+    },
+    {
+      "id": "kr/claude-sonnet-4.6-thinking",
+      "provider": "kr",
+      "score": 87,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "extrapolated above Sonnet 4.5"
+    },
+    {
+      "id": "kr/claude-sonnet-4.6-thinking-agentic",
+      "provider": "kr",
+      "score": 87,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "extrapolated above Sonnet 4.5"
+    },
+    {
+      "id": "ollama/deepseek-v4-pro",
+      "provider": "ollama",
+      "score": 87,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above DeepSeek V3.2"
+    },
+    {
+      "id": "kr/claude-sonnet-4.5-thinking",
+      "provider": "kr",
+      "score": 85,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Sonnet 4.5 AAII high-70s, SWE-bench ~77%"
+    },
+    {
+      "id": "kr/claude-sonnet-4.5-thinking-agentic",
+      "provider": "kr",
+      "score": 85,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "Sonnet 4.5 AAII high-70s, SWE-bench ~77%"
+    },
+    {
+      "id": "kr/claude-sonnet-4.6",
+      "provider": "kr",
+      "score": 85,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above Sonnet 4.5"
+    },
+    {
+      "id": "kr/claude-sonnet-4.6-agentic",
+      "provider": "kr",
+      "score": 85,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "extrapolated above Sonnet 4.5"
+    },
+    {
+      "id": "gc/gemini-2.5-pro",
+      "provider": "gc",
+      "score": 84,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 2.5 Pro AAII ~65 (index) / LMArena top-3"
+    },
+    {
+      "id": "kr/deepseek-3.2-thinking",
+      "provider": "kr",
+      "score": 84,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "DeepSeek V3.2 AAII low-80s equiv, SWE-bench ~strong"
+    },
+    {
+      "id": "kr/deepseek-3.2-thinking-agentic",
+      "provider": "kr",
+      "score": 84,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "DeepSeek V3.2 AAII low-80s equiv, SWE-bench ~strong"
+    },
+    {
+      "id": "ollama/kimi-k2.7-code",
+      "provider": "ollama",
+      "score": 84,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above K2.6, coding-tuned"
+    },
+    {
+      "id": "glm/glm-5.2",
+      "provider": "glm",
+      "score": 83,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above GLM-5"
+    },
+    {
+      "id": "kr/claude-sonnet-4.5",
+      "provider": "kr",
+      "score": 83,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Sonnet 4.5 AAII high-70s, SWE-bench ~77%"
+    },
+    {
+      "id": "kr/claude-sonnet-4.5-agentic",
+      "provider": "kr",
+      "score": 83,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "Sonnet 4.5 AAII high-70s, SWE-bench ~77%"
+    },
+    {
+      "id": "ollama/glm-5.2",
+      "provider": "ollama",
+      "score": 83,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above GLM-5"
+    },
+    {
+      "id": "ollama/kimi-k2.6",
+      "provider": "ollama",
+      "score": 83,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above K2.5"
+    },
+    {
+      "id": "bpm/seed-2-0-pro-260328",
+      "provider": "bpm",
+      "score": 82,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Seed 2.0 Pro extrapolation (ByteDance)"
+    },
+    {
+      "id": "kr/deepseek-3.2",
+      "provider": "kr",
+      "score": 82,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "DeepSeek V3.2 AAII low-80s equiv, SWE-bench ~strong"
+    },
+    {
+      "id": "kr/deepseek-3.2-agentic",
+      "provider": "kr",
+      "score": 82,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "DeepSeek V3.2 AAII low-80s equiv, SWE-bench ~strong"
+    },
+    {
+      "id": "kr/glm-5-thinking",
+      "provider": "kr",
+      "score": 82,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "kr/glm-5-thinking-agentic",
+      "provider": "kr",
+      "score": 82,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "ollama/qwen3.5:397b",
+      "provider": "ollama",
+      "score": 82,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated Qwen3.5 large MoE"
+    },
+    {
+      "id": "bpm/kimi-k2-thinking-251104",
+      "provider": "bpm",
+      "score": 81,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Kimi K2 Thinking AAII ~ high (open leader)"
+    },
+    {
+      "id": "glm/glm-5.1",
+      "provider": "glm",
+      "score": 81,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above GLM-5"
+    },
+    {
+      "id": "kr/qwen3-coder-next-thinking",
+      "provider": "kr",
+      "score": 81,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Qwen3-Coder next-gen extrapolation"
+    },
+    {
+      "id": "kr/qwen3-coder-next-thinking-agentic",
+      "provider": "kr",
+      "score": 81,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "Qwen3-Coder next-gen extrapolation"
+    },
+    {
+      "id": "ollama/glm-5.1",
+      "provider": "ollama",
+      "score": 81,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above GLM-5"
+    },
+    {
+      "id": "ollama/kimi-k2.5",
+      "provider": "ollama",
+      "score": 81,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above K2 Thinking"
+    },
+    {
+      "id": "bpm/seed-2-0-code-preview-260328",
+      "provider": "bpm",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Seed 2.0 code-preview extrapolation"
+    },
+    {
+      "id": "glm/glm-5",
+      "provider": "glm",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "kr/glm-5",
+      "provider": "kr",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "kr/glm-5-agentic",
+      "provider": "kr",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "ollama/glm-5",
+      "provider": "ollama",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-5 ~ strong open (post-cutoff)"
+    },
+    {
+      "id": "ollama/minimax-m3",
+      "provider": "ollama",
+      "score": 80,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "extrapolated above M2.7"
+    },
+    {
+      "id": "ollama/qwen3-coder:480b",
+      "provider": "ollama",
+      "score": 80,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Qwen3-Coder 480B strong on coding evals"
+    },
+    {
+      "id": "kr/qwen3-coder-next",
+      "provider": "kr",
+      "score": 79,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Qwen3-Coder next-gen extrapolation"
+    },
+    {
+      "id": "kr/qwen3-coder-next-agentic",
+      "provider": "kr",
+      "score": 79,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "Qwen3-Coder next-gen extrapolation"
+    },
+    {
+      "id": "gc/gemini-3-flash-preview",
+      "provider": "gc",
+      "score": 78,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 3 Flash mid-high extrapolation"
+    },
+    {
+      "id": "gemini/gemini-3-flash-preview",
+      "provider": "gemini",
+      "score": 78,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 3 Flash mid-high extrapolation"
+    },
+    {
+      "id": "kr/claude-sonnet-4-thinking",
+      "provider": "kr",
+      "score": 78,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Sonnet 4 public benchmarks"
+    },
+    {
+      "id": "kr/claude-sonnet-4-thinking-agentic",
+      "provider": "kr",
+      "score": 78,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "Sonnet 4 public benchmarks"
+    },
+    {
+      "id": "ollama/gemini-3-flash-preview",
+      "provider": "ollama",
+      "score": 78,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 3 Flash mid-high extrapolation"
+    },
+    {
+      "id": "ollama/qwen3.5",
+      "provider": "ollama",
+      "score": 78,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Qwen3.5 extrapolation"
+    },
+    {
+      "id": "kr/minimax-m2.5-thinking",
+      "provider": "kr",
+      "score": 77,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "M2.5 extrapolation"
+    },
+    {
+      "id": "kr/minimax-m2.5-thinking-agentic",
+      "provider": "kr",
+      "score": 77,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "M2.5 extrapolation"
+    },
+    {
+      "id": "nvidia/minimaxai/minimax-m2.7",
+      "provider": "nvidia",
+      "score": 77,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.7 extrapolation"
+    },
+    {
+      "id": "ollama/minimax-m2.7",
+      "provider": "ollama",
+      "score": 77,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.7 extrapolation"
+    },
+    {
+      "id": "bpm/glm-4-7-251222",
+      "provider": "bpm",
+      "score": 76,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.7 extrapolation from GLM-4.6"
+    },
+    {
+      "id": "glm/glm-4.7",
+      "provider": "glm",
+      "score": 76,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.7 extrapolation from GLM-4.6"
+    },
+    {
+      "id": "kr/claude-sonnet-4",
+      "provider": "kr",
+      "score": 76,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Sonnet 4 public benchmarks"
+    },
+    {
+      "id": "kr/claude-sonnet-4-agentic",
+      "provider": "kr",
+      "score": 76,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "Sonnet 4 public benchmarks"
+    },
+    {
+      "id": "nvidia/z-ai/glm4.7",
+      "provider": "nvidia",
+      "score": 76,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.7 extrapolation from GLM-4.6"
+    },
+    {
+      "id": "ollama/glm-4.7",
+      "provider": "ollama",
+      "score": 76,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.7 extrapolation from GLM-4.6"
+    },
+    {
+      "id": "ollama/glm-4.7-flash",
+      "provider": "ollama",
+      "score": 76,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.7 extrapolation from GLM-4.6"
+    },
+    {
+      "id": "openrouter/qwen/qwen3-coder:free",
+      "provider": "openrouter",
+      "score": 76,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Qwen3-Coder public coding benchmarks"
+    },
+    {
+      "id": "kr/minimax-m2.5",
+      "provider": "kr",
+      "score": 75,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.5 extrapolation"
+    },
+    {
+      "id": "kr/minimax-m2.5-agentic",
+      "provider": "kr",
+      "score": 75,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "M2.5 extrapolation"
+    },
+    {
+      "id": "ollama/minimax-m2.5",
+      "provider": "ollama",
+      "score": 75,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.5 extrapolation"
+    },
+    {
+      "id": "gc/gemini-2.5-flash",
+      "provider": "gc",
+      "score": 74,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 2.5 Flash public"
+    },
+    {
+      "id": "kr/minimax-m2.1-thinking",
+      "provider": "kr",
+      "score": 74,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "M2.1 extrapolation from MiniMax M2"
+    },
+    {
+      "id": "kr/minimax-m2.1-thinking-agentic",
+      "provider": "kr",
+      "score": 74,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "M2.1 extrapolation from MiniMax M2"
+    },
+    {
+      "id": "ollama/nemotron-3-ultra",
+      "provider": "ollama",
+      "score": 74,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron-3 Ultra 550B extrapolation"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free",
+      "provider": "openrouter",
+      "score": 74,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron-3 Ultra 550B extrapolation"
+    },
+    {
+      "id": "glm/glm-4.6v",
+      "provider": "glm",
+      "score": 72,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "GLM-4.6V vision variant"
+    },
+    {
+      "id": "kr/claude-haiku-4.5-thinking",
+      "provider": "kr",
+      "score": 72,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Haiku 4.5 fast-tier, ~ mid Sonnet-4 level"
+    },
+    {
+      "id": "kr/claude-haiku-4.5-thinking-agentic",
+      "provider": "kr",
+      "score": 72,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": true,
+        "agentic": true
+      },
+      "basis": "Haiku 4.5 fast-tier, ~ mid Sonnet-4 level"
+    },
+    {
+      "id": "kr/minimax-m2.1",
+      "provider": "kr",
+      "score": 72,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.1 extrapolation from MiniMax M2"
+    },
+    {
+      "id": "kr/minimax-m2.1-agentic",
+      "provider": "kr",
+      "score": 72,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "M2.1 extrapolation from MiniMax M2"
+    },
+    {
+      "id": "ollama/deepseek-v4-flash",
+      "provider": "ollama",
+      "score": 72,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "V4 flash tier extrapolation"
+    },
+    {
+      "id": "ollama/minimax-m2.1",
+      "provider": "ollama",
+      "score": 72,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "M2.1 extrapolation from MiniMax M2"
+    },
+    {
+      "id": "openrouter/qwen/qwen3-next-80b-a3b-instruct:free",
+      "provider": "openrouter",
+      "score": 72,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Qwen3-Next 80B public"
+    },
+    {
+      "id": "bpm/gpt-oss-120b-250805",
+      "provider": "bpm",
+      "score": 71,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "gpt-oss-120b AAII ~61"
+    },
+    {
+      "id": "ollama/gpt-oss:120b",
+      "provider": "ollama",
+      "score": 71,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "gpt-oss-120b AAII ~61"
+    },
+    {
+      "id": "openrouter/openai/gpt-oss-120b:free",
+      "provider": "openrouter",
+      "score": 71,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "gpt-oss-120b AAII ~61"
+    },
+    {
+      "id": "kr/claude-haiku-4.5",
+      "provider": "kr",
+      "score": 70,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Haiku 4.5 fast-tier, ~ mid Sonnet-4 level"
+    },
+    {
+      "id": "kr/claude-haiku-4.5-agentic",
+      "provider": "kr",
+      "score": 70,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": true
+      },
+      "basis": "Haiku 4.5 fast-tier, ~ mid Sonnet-4 level"
+    },
+    {
+      "id": "bpm/seed-2-0-mini-260215",
+      "provider": "bpm",
+      "score": 68,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Seed 2.0 mini extrapolation"
+    },
+    {
+      "id": "gc/gemini-3.1-flash-lite-preview",
+      "provider": "gc",
+      "score": 68,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "flash-lite tier extrapolation"
+    },
+    {
+      "id": "gemini/gemini-3.1-flash-lite-preview",
+      "provider": "gemini",
+      "score": 68,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "flash-lite tier extrapolation"
+    },
+    {
+      "id": "ollama/nemotron-3-super",
+      "provider": "ollama",
+      "score": 68,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron-3 Super 120B extrapolation"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+      "provider": "openrouter",
+      "score": 68,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron-3 Super 120B extrapolation"
+    },
+    {
+      "id": "openrouter/nousresearch/hermes-3-llama-3.1-405b:free",
+      "provider": "openrouter",
+      "score": 66,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Hermes 3 405B (fine-tune of Llama 3.1 405B)"
+    },
+    {
+      "id": "openrouter/poolside/laguna-m.1:free",
+      "provider": "openrouter",
+      "score": 63,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Poolside Laguna M (little public data)"
+    },
+    {
+      "id": "gc/gemini-2.5-flash-lite",
+      "provider": "gc",
+      "score": 62,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemini 2.5 Flash-Lite public"
+    },
+    {
+      "id": "openrouter/meta-llama/llama-3.3-70b-instruct:free",
+      "provider": "openrouter",
+      "score": 62,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Llama 3.3 70B public benchmarks"
+    },
+    {
+      "id": "bpm/seed-2-0-lite-260228",
+      "provider": "bpm",
+      "score": 60,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Seed 2.0 lite extrapolation"
+    },
+    {
+      "id": "gemini/gemma-4-31b-it",
+      "provider": "gemini",
+      "score": 60,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemma 4 31B extrapolation from Gemma 3"
+    },
+    {
+      "id": "ollama/gemma4:31b",
+      "provider": "ollama",
+      "score": 60,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemma 4 31B extrapolation from Gemma 3"
+    },
+    {
+      "id": "openrouter/cohere/north-mini-code:free",
+      "provider": "openrouter",
+      "score": 60,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Cohere North mini-code (little public data)"
+    },
+    {
+      "id": "openrouter/google/gemma-4-31b-it:free",
+      "provider": "openrouter",
+      "score": 60,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemma 4 31B extrapolation from Gemma 3"
+    },
+    {
+      "id": "ollama/gpt-oss:20b",
+      "provider": "ollama",
+      "score": 58,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "gpt-oss-20b public"
+    },
+    {
+      "id": "openrouter/openai/gpt-oss-20b:free",
+      "provider": "openrouter",
+      "score": 58,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "gpt-oss-20b public"
+    },
+    {
+      "id": "openrouter/poolside/laguna-xs.2:free",
+      "provider": "openrouter",
+      "score": 58,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Poolside Laguna XS (little public data)"
+    },
+    {
+      "id": "openrouter/google/gemma-4-26b-a4b-it:free",
+      "provider": "openrouter",
+      "score": 57,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Gemma 4 26B extrapolation"
+    },
+    {
+      "id": "openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+      "provider": "openrouter",
+      "score": 55,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Dolphin Mistral 24B fine-tune"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-3-nano-30b-a3b:free",
+      "provider": "openrouter",
+      "score": 55,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron-3 nano 30B extrapolation"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      "provider": "openrouter",
+      "score": 52,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron nano omni multimodal"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-nano-12b-v2-vl:free",
+      "provider": "openrouter",
+      "score": 50,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "nano 12B vision-language"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-nano-9b-v2:free",
+      "provider": "openrouter",
+      "score": 48,
+      "confidence": "med",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Nemotron nano 9B v2 public"
+    },
+    {
+      "id": "openrouter/meta-llama/llama-3.2-3b-instruct:free",
+      "provider": "openrouter",
+      "score": 35,
+      "confidence": "high",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Llama 3.2 3B public"
+    },
+    {
+      "id": "openrouter/liquid/lfm-2.5-1.2b-thinking:free",
+      "provider": "openrouter",
+      "score": 30,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "Liquid LFM 1.2B tiny"
+    },
+    {
+      "id": "openrouter/liquid/lfm-2.5-1.2b-instruct:free",
+      "provider": "openrouter",
+      "score": 28,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "Liquid LFM 1.2B tiny"
+    },
+    {
+      "id": "kr/auto",
+      "provider": "kr",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "dynamic router alias — resolves to a backend model"
+    },
+    {
+      "id": "kr/auto-thinking",
+      "provider": "kr",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": true,
+        "agentic": false
+      },
+      "basis": "dynamic router alias — resolves to a backend model"
+    },
+    {
+      "id": "nvidia/parakeet-ctc-1.1b-asr",
+      "provider": "nvidia",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "speech-to-text ASR — not a chat LLM"
+    },
+    {
+      "id": "openrouter/google/lyria-3-clip-preview",
+      "provider": "openrouter",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "music generation model — not a chat/coding LLM"
+    },
+    {
+      "id": "openrouter/google/lyria-3-pro-preview",
+      "provider": "openrouter",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "music generation model — not a chat/coding LLM"
+    },
+    {
+      "id": "openrouter/nvidia/nemotron-3.5-content-safety:free",
+      "provider": "openrouter",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "safety classifier — not a general LLM"
+    },
+    {
+      "id": "openrouter/openrouter/free",
+      "provider": "openrouter",
+      "score": null,
+      "confidence": "n/a",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "free-tier router alias — model varies"
+    },
+    {
+      "id": "qd/qmodel_latest",
+      "provider": "qd",
+      "score": null,
+      "confidence": "low",
+      "capabilities": {
+        "thinking": false,
+        "agentic": false
+      },
+      "basis": "unknown proprietary model — no public benchmark"
+    }
+  ]
+}

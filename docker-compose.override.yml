@@ -1,0 +1,9 @@
+# Local override — run the 9router container from a locally-built image that
+# includes the kiro dash->dot model-id normalization (fix/kiro-dash-model-normalize),
+# instead of the upstream decolua/9router:latest. Not committed; docker compose
+# auto-merges this file on top of docker-compose.yml.
+#
+# Rebuild after code changes:  docker build -t 9router:local . && docker compose up -d
+services:
+  9router:
+    image: 9router:local

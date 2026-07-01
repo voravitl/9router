@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"rtk read docker-compose.override.yml 2>/dev/null; echo \\\"---env---\\\"; rtk find . -maxdepth 2 -iname \\\".env*\\\" 2>/dev/null; echo \\\"---zshrc check---\\\"; rtk grep -n \\\"NINEROUTER\\\" ~/.zshrc ~...",
+  "error": "Exit code 1\n# Local override — run the 9router container from a locally-built image that\n# includes the kiro dash->dot model-id normalization (fix/kiro-dash-model-normalize),\n# instead of the upstream decolua/9router:latest. Not committed; docker compose\n# auto-merges this file on top of docker-compose.yml.\n#\n# Rebuild after code changes:  docker build -t 9router:local . && docker compose up -d\nservices:\n  9router:\n    image: 9router:local\n---env---\n1F 1D:\n\n./ .env.example\n---zshrc check---\n0 ma...",
+  "timestamp": "2026-07-01T13:10:10.272Z",
+  "retry_count": 1
+}

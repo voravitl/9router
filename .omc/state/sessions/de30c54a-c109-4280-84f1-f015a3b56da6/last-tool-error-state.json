@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"rtk find /Users/voravit.l/dev/9router/open-sse/handlers -name \\\"*Provider*\\\" -o -name \\\"*provider*\\\" 2>/dev/null\",\"description\":\"Find provider handlers directories\"}",
+  "error": "Exit code 1",
+  "timestamp": "2026-07-01T05:55:13.542Z",
+  "retry_count": 1
+}

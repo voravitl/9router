@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"rtk find /Users/voravit.l/dev/9router -not -path \\\"*/node_modules/*\\\" -iname \\\"*kiroModels*\\\"\",\"description\":\"Locate kiroModels service file\"}",
+  "error": "Exit code 1\nrtk: rtk find does not support compound predicates or actions (e.g. -not, -exec). Use `find` directly.",
+  "timestamp": "2026-07-01T03:50:07.520Z",
+  "retry_count": 1
+}
