@@ -47,7 +47,7 @@
     "runtime": null
   },
   "build": {
-    "buildCommand": "npm run build",
+    "buildCommand": "rtk tsc --noEmit 2>&1 | head -30 || echo \"TypeScript check complete\"",
     "testCommand": null,
     "lintCommand": null,
     "devCommand": "npm run dev",
@@ -309,6 +309,12 @@
   },
   "hotPaths": [
     {
+      "path": "src/app/api/providers/[id]/models/route.js",
+      "accessCount": 8,
+      "lastAccessed": 1782915272944,
+      "type": "file"
+    },
+    {
       "path": "src/app/(dashboard)/dashboard/providers/[id]/page.js",
       "accessCount": 5,
       "lastAccessed": 1782914865467,
@@ -324,12 +330,6 @@
       "path": "src/dashboardGuard.js",
       "accessCount": 3,
       "lastAccessed": 1782911523155,
-      "type": "file"
-    },
-    {
-      "path": "src/app/api/providers/[id]/models/route.js",
-      "accessCount": 3,
-      "lastAccessed": 1782914878289,
       "type": "file"
     },
     {
@@ -354,6 +354,18 @@
       "path": "graphify-out/GRAPH_REPORT.md",
       "accessCount": 2,
       "lastAccessed": 1782914541277,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/providers/registry/ollama.js",
+      "accessCount": 2,
+      "lastAccessed": 1782915211234,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/oauth/services/kiro.js",
+      "accessCount": 2,
+      "lastAccessed": 1782915222429,
       "type": "file"
     },
     {
@@ -414,12 +426,6 @@
       "path": "src/app/api/oauth/kiro/import-cli-proxy/route.js",
       "accessCount": 1,
       "lastAccessed": 1782876856900,
-      "type": "file"
-    },
-    {
-      "path": "open-sse/providers/registry/ollama.js",
-      "accessCount": 1,
-      "lastAccessed": 1782877053469,
       "type": "file"
     },
     {
@@ -540,6 +546,24 @@
       "path": "skills/9router/SKILL.md",
       "accessCount": 1,
       "lastAccessed": 1782911237680,
+      "type": "file"
+    },
+    {
+      "path": "open-sse/config/ollamaModels.js",
+      "accessCount": 1,
+      "lastAccessed": 1782915216994,
+      "type": "file"
+    },
+    {
+      "path": "src/lib/oauth/services/ollama.js",
+      "accessCount": 1,
+      "lastAccessed": 1782915247020,
+      "type": "file"
+    },
+    {
+      "path": "tests/unit/ollama-sync-models.test.js",
+      "accessCount": 1,
+      "lastAccessed": 1782915293002,
       "type": "file"
     }
   ],

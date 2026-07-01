@@ -1,0 +1,131 @@
+ Image 9router:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 534B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.79kB done
+#2 DONE 0.1s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#3 ...
+
+#4 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#3 DONE 2.1s
+
+#5 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#5 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#5 CACHED
+
+#6 [internal] load metadata for docker.io/library/node:22-alpine
+#6 ...
+
+#7 [auth] library/node:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/node:22-alpine
+#6 DONE 1.5s
+
+#8 [internal] load .dockerignore
+#8 transferring context:
+#8 transferring context: 416B 0.0s done
+#8 DONE 0.1s
+
+#9 [runner  1/12] FROM docker.io/library/node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+#9 resolve docker.io/library/node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 0.0s done
+#9 DONE 0.0s
+
+#10 [runner  2/12] WORKDIR /app
+#10 CACHED
+
+#11 [internal] load build context
+#11 transferring context: 17.89MB 1.1s done
+#11 DONE 1.2s
+
+#12 [builder 1/5] RUN apk --no-cache upgrade && apk --no-cache add python3 make g++ linux-headers
+#12 2.342 OK: 11.1 MiB in 18 packages
+#12 3.679 ( 1/31) Installing libstdc++-dev (15.2.0-r5)
+#12 4.166 ( 2/31) Installing jansson (2.15.0-r0)
+#12 4.183 ( 3/31) Installing zstd-libs (1.5.7-r2)
+#12 4.204 ( 4/31) Installing binutils (2.45.1-r1)
+#12 4.397 ( 5/31) Installing libgcc-static (15.2.0-r5)
+#12 4.452 ( 6/31) Installing libgomp (15.2.0-r5)
+#12 4.471 ( 7/31) Installing libatomic (15.2.0-r5)
+#12 4.484 ( 8/31) Installing gmp (6.3.0-r4)
+#12 4.505 ( 9/31) Installing isl26 (0.26-r2)
+#12 4.535 (10/31) Installing mpfr4 (4.2.2-r0)
+#12 4.550 (11/31) Installing mpc1 (1.3.1-r1)
+#12 4.565 (12/31) Installing gcc (15.2.0-r5)
+#12 6.770 (13/31) Installing musl-dev (1.2.6-r2)
+#12 6.962 (14/31) Installing g++ (15.2.0-r5)
+#12 7.437 (15/31) Installing linux-headers (7.0.0-r1)
+#12 7.824 (16/31) Installing make (4.4.1-r4)
+#12 7.892 (17/31) Installing libbz2 (1.0.8-r6)
+#12 7.951 (18/31) Installing libexpat (2.8.2-r0)
+#12 7.974 (19/31) Installing libffi (3.5.2-r1)
+#12 8.014 (20/31) Installing gdbm (1.26-r0)
+#12 8.047 (21/31) Installing xz-libs (5.8.3-r0)
+#12 8.066 (22/31) Installing mpdecimal (4.0.1-r0)
+#12 8.085 (23/31) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+#12 8.289 (24/31) Installing libncursesw (6.6_p20260516-r0)
+#12 8.306 (25/31) Installing libpanelw (6.6_p20260516-r0)
+#12 8.318 (26/31) Installing readline (8.3.3-r1)
+#12 8.335 (27/31) Installing sqlite-libs (3.53.2-r0)
+#12 8.371 (28/31) Installing python3 (3.14.5-r0)
+#12 8.547 (29/31) Installing python3-pycache-pyc0 (3.14.5-r0)
+#12 8.651 (30/31) Installing pyc (3.14.5-r0)
+#12 8.651 (31/31) Installing python3-pyc (3.14.5-r0)
+#12 8.652 Executing busybox-1.37.0-r31.trigger
+#12 8.671 OK: 282.7 MiB in 49 packages
+#12 DONE 8.9s
+
+#13 [builder 2/5] COPY package.json ./
+#13 DONE 0.1s
+
+#14 [builder 3/5] RUN --mount=type=cache,target=/root/.npm   npm install
+#14 256.5 npm warn deprecated prebuild-install@7.1.3: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
+#14 266.2 
+#14 266.2 added 579 packages, and audited 580 packages in 4m
+#14 266.2 
+#14 266.2 203 packages are looking for funding
+#14 266.2   run `npm fund` for details
+#14 266.2 
+#14 266.2 5 vulnerabilities (1 low, 4 moderate)
+#14 266.2 
+#14 266.2 To address all issues possible (including breaking changes), run:
+#14 266.2   npm audit fix --force
+#14 266.2 
+#14 266.2 Some issues need review, and may require choosing
+#14 266.2 a different dependency.
+#14 266.2 
+#14 266.2 Run `npm audit` for details.
+#14 266.2 npm notice
+#14 266.2 npm notice New major version of npm available! 10.9.8 -> 11.18.0
+#14 266.2 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.18.0
+#14 266.2 npm notice To update run: npm install -g npm@11.18.0
+#14 266.2 npm notice
+#14 DONE 266.6s
+
+#15 [builder 4/5] COPY . ./
+#15 DONE 3.2s
+
+#16 [builder 5/5] RUN npm run build
+#16 2.242 
+#16 2.242 > 9router-app@0.5.15 build
+#16 2.242 > next build --webpack
+#16 2.242 
+#16 3.062 ▲ Next.js 16.2.9 (webpack)
+#16 3.062 - Experiments (use with caution):
+#16 3.062   · proxyClientMaxBodySize: "128mb"
+#16 3.062 
+#16 3.105   Creating an optimized production build ...
+#16 104.4 ✓ Compiled successfully in 101s
+#16 104.4   Running TypeScript ...
+#16 104.6   Finished TypeScript in 204ms ...
+#16 104.6   Collecting page data using 1 worker ...
+#16 105.1 [DB] Driver: better-sqlite3 | file: /root/.9router/db/data.sqlite
+#16 105.1 [DB][migrate] applied #1 initial
+#16 110.0   Generating static pages using 1 worker (0/125) ...

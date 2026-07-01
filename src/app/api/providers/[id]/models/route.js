@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { KiroService } from "@/lib/oauth/services/kiro";
+import { OllamaService } from "@/lib/oauth/services/ollama";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
@@ -335,6 +336,42 @@ export async function GET(request, { params }) {
       }
 
       // Return empty dynamic list so UI falls back to static provider models.
+      return NextResponse.json({
+        provider: connection.provider,
+        connectionId: connection.id,
+        models: [],
+        warning,
+      });
+    }
+
+    // Ollama Cloud: Fetch models from API
+    if (connection.provider === "ollama") {
+      let warning;
+      try {
+        const ollamaService = new OllamaService();
+        const accessToken = connection.accessToken;
+
+        if (accessToken) {
+          try {
+            const models = await ollamaService.listAvailableModels(accessToken);
+            return NextResponse.json({
+              provider: connection.provider,
+              connectionId: connection.id,
+              models,
+            });
+          } catch (error) {
+            warning = `Failed to fetch Ollama models: ${error.message}`;
+            console.log("Failed to fetch Ollama models dynamically, falling back to static:", error.message);
+          }
+        } else {
+          warning = "No Ollama API key found";
+        }
+      } catch (error) {
+        warning = `Ollama service error: ${error.message}`;
+        console.log("Ollama service error:", error.message);
+      }
+
+      // Return empty dynamic list so UI falls back to static provider models
       return NextResponse.json({
         provider: connection.provider,
         connectionId: connection.id,
