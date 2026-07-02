@@ -11,6 +11,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getProviderConnectionById: vi.fn(),
   listAvailableModels: vi.fn(),
+  refreshKiroToken: vi.fn(),
+  updateProviderCredentials: vi.fn(),
 }));
 
 vi.mock("@/models", () => ({
@@ -21,6 +23,12 @@ vi.mock("@/lib/oauth/services/kiro", () => ({
   KiroService: vi.fn().mockImplementation(function () {
     this.listAvailableModels = mocks.listAvailableModels;
   }),
+}));
+
+vi.mock("@/sse/services/tokenRefresh", () => ({
+  refreshGoogleToken: vi.fn(),
+  updateProviderCredentials: mocks.updateProviderCredentials,
+  refreshKiroToken: mocks.refreshKiroToken,
 }));
 
 vi.mock("next/server", () => ({
@@ -99,6 +107,79 @@ describe("Kiro models route — profileArn resolution", () => {
     await res.json();
 
     expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-api-key", "");
+  });
+
+  it("surfaces a friendly warning (not raw AWS JSON) and an empty list when AWS blocks ListAvailableModels", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-idc",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: { authMethod: "idc" },
+    });
+    mocks.listAvailableModels.mockRejectedValue(new Error(
+      'Failed to list models: {"__type":"com.amazon.aws.codewhisperer#AccessDeniedException","message":"Your subscription does not support this application. Please contact your administrator."}',
+    ));
+
+    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+
+    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-idc/models"), {
+      params: Promise.resolve({ id: "conn-kiro-idc" }),
+    });
+    const body = await res.json();
+
+    // Empty list (client keeps built-in static catalog); the raw AWS JSON is NOT surfaced.
+    expect(body.models).toEqual([]);
+    expect(body.warning).toMatch(/can't list models dynamically/i);
+    expect(body.warning).not.toMatch(/AccessDeniedException/);
+  });
+
+  it("keeps the generic warning for a non-subscription failure (still no catalog injected)", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-neterr",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: { authMethod: "idc" },
+    });
+    mocks.listAvailableModels.mockRejectedValue(new Error("network timeout"));
+
+    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+
+    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-neterr/models"), {
+      params: Promise.resolve({ id: "conn-kiro-neterr" }),
+    });
+    const body = await res.json();
+
+    expect(body.models).toEqual([]);
+    expect(body.warning).toBe("Failed to fetch Kiro models: network timeout");
+  });
+
+  it("degrades on the real production path: refresh succeeds but the retry is still denied", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-refresh",
+      provider: "kiro",
+      accessToken: "stale-token",
+      refreshToken: "kiro-refresh-token",
+      providerSpecificData: { authMethod: "idc" },
+    });
+    const denied = new Error(
+      'Failed to list models: {"__type":"com.amazon.aws.codewhisperer#AccessDeniedException","message":"Your subscription does not support this application."}',
+    );
+    // Both the initial call and the post-refresh retry are denied.
+    mocks.listAvailableModels.mockRejectedValue(denied);
+    mocks.refreshKiroToken.mockResolvedValue({ accessToken: "fresh-token", expiresIn: 3600 });
+
+    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+
+    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-refresh/models"), {
+      params: Promise.resolve({ id: "conn-kiro-refresh" }),
+    });
+    const body = await res.json();
+
+    expect(mocks.refreshKiroToken).toHaveBeenCalled();
+    expect(mocks.listAvailableModels).toHaveBeenCalledTimes(2);
+    expect(body.models).toEqual([]);
+    expect(body.warning).toMatch(/can't list models dynamically/i);
+    expect(body.warning).not.toMatch(/AccessDeniedException/);
   });
 
   it("uses the connection's own stored profileArn when present, regardless of authMethod", async () => {
