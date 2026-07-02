@@ -1,3 +1,8 @@
+# v0.5.18 (2026-07-02)
+
+## Fixes
+- **UI**: Sync Models modal gave no feedback when every upstream model was already added (empty-looking disabled checkboxes looked broken); add a visible added-state check, an "All upstream models are already added." banner, and an "N available to add" count (#12) — voravitl
+
 # v0.5.17 (2026-07-02)
 
 ## Fixes
