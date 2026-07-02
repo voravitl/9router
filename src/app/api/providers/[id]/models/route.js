@@ -340,17 +340,12 @@ export async function GET(request, { params }) {
           }
         }
       } catch (error) {
-        // Some Kiro subscriptions (notably IDC/enterprise) permit chat but block the
-        // ListAvailableModels operation entirely — AWS returns AccessDeniedException
-        // "Your subscription does not support this application". This is an account
-        // entitlement, not a request bug (chat with the same token/profileArn works),
-        // so surface a friendly, actionable message instead of the raw AWS JSON.
+        // Dynamic listing failed — surface the actual error and let the client keep using
+        // the built-in static catalog. (The common historical cause, a 403 "subscription
+        // does not support this application", was a missing kiro-ide User-Agent header,
+        // now fixed in listAvailableModels — so this path is a genuine-failure fallback.)
         const message = error?.message || "";
-        const isSubscriptionBlock = /AccessDeniedException/.test(message)
-          && /subscription does not support/i.test(message);
-        warning = isSubscriptionBlock
-          ? "This Kiro account can't list models dynamically (AWS restricts it for this subscription). The built-in Kiro models are already available and work for chat as usual."
-          : `Failed to fetch Kiro models: ${message}`;
+        warning = `Failed to fetch Kiro models: ${message}`;
         console.log("Failed to fetch Kiro models dynamically, falling back to static:", message);
       }
 

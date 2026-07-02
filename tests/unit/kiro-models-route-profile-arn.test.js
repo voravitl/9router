@@ -109,16 +109,14 @@ describe("Kiro models route — profileArn resolution", () => {
     expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-api-key", "");
   });
 
-  it("surfaces a friendly warning (not raw AWS JSON) and an empty list when AWS blocks ListAvailableModels", async () => {
+  it("returns an empty list + error warning when the Kiro models call fails", async () => {
     mocks.getProviderConnectionById.mockResolvedValue({
       id: "conn-kiro-idc",
       provider: "kiro",
       accessToken: "kiro-access-token",
       providerSpecificData: { authMethod: "idc" },
     });
-    mocks.listAvailableModels.mockRejectedValue(new Error(
-      'Failed to list models: {"__type":"com.amazon.aws.codewhisperer#AccessDeniedException","message":"Your subscription does not support this application. Please contact your administrator."}',
-    ));
+    mocks.listAvailableModels.mockRejectedValue(new Error("boom"));
 
     const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
 
@@ -127,10 +125,9 @@ describe("Kiro models route — profileArn resolution", () => {
     });
     const body = await res.json();
 
-    // Empty list (client keeps built-in static catalog); the raw AWS JSON is NOT surfaced.
+    // Empty list (client keeps built-in static catalog); the actual error is surfaced.
     expect(body.models).toEqual([]);
-    expect(body.warning).toMatch(/can't list models dynamically/i);
-    expect(body.warning).not.toMatch(/AccessDeniedException/);
+    expect(body.warning).toBe("Failed to fetch Kiro models: boom");
   });
 
   it("keeps the generic warning for a non-subscription failure (still no catalog injected)", async () => {
@@ -153,7 +150,7 @@ describe("Kiro models route — profileArn resolution", () => {
     expect(body.warning).toBe("Failed to fetch Kiro models: network timeout");
   });
 
-  it("degrades on the real production path: refresh succeeds but the retry is still denied", async () => {
+  it("retries after a successful token refresh, then degrades if the retry still fails", async () => {
     mocks.getProviderConnectionById.mockResolvedValue({
       id: "conn-kiro-refresh",
       provider: "kiro",
@@ -161,11 +158,10 @@ describe("Kiro models route — profileArn resolution", () => {
       refreshToken: "kiro-refresh-token",
       providerSpecificData: { authMethod: "idc" },
     });
-    const denied = new Error(
-      'Failed to list models: {"__type":"com.amazon.aws.codewhisperer#AccessDeniedException","message":"Your subscription does not support this application."}',
-    );
-    // Both the initial call and the post-refresh retry are denied.
-    mocks.listAvailableModels.mockRejectedValue(denied);
+    // Both the initial call and the post-refresh retry fail (AccessDenied triggers refresh).
+    mocks.listAvailableModels.mockRejectedValue(new Error(
+      'Failed to list models: {"__type":"com.amazon.aws.codewhisperer#AccessDeniedException","message":"denied"}',
+    ));
     mocks.refreshKiroToken.mockResolvedValue({ accessToken: "fresh-token", expiresIn: 3600 });
 
     const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
@@ -178,8 +174,7 @@ describe("Kiro models route — profileArn resolution", () => {
     expect(mocks.refreshKiroToken).toHaveBeenCalled();
     expect(mocks.listAvailableModels).toHaveBeenCalledTimes(2);
     expect(body.models).toEqual([]);
-    expect(body.warning).toMatch(/can't list models dynamically/i);
-    expect(body.warning).not.toMatch(/AccessDeniedException/);
+    expect(body.warning).toMatch(/^Failed to fetch Kiro models:/);
   });
 
   it("uses the connection's own stored profileArn when present, regardless of authMethod", async () => {
