@@ -87,9 +87,11 @@ const PROVIDER_MODELS_CONFIG = {
     method: "GET",
     headers: {
       "Anthropic-Version": "2023-06-01",
+      "Anthropic-Beta": "oauth-2025-04-20",
       "Content-Type": "application/json"
     },
-    authHeader: "x-api-key",
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
     parseResponse: (data) => data.data || []
   },
   gemini: {
