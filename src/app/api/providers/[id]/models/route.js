@@ -7,7 +7,6 @@ import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { resolveDefaultProfileArn } from "open-sse/config/kiroConstants.js";
-import { getModelsByProviderId } from "open-sse/config/providerModels.js";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -344,22 +343,25 @@ export async function GET(request, { params }) {
         // Some Kiro subscriptions (notably IDC/enterprise) permit chat but block the
         // ListAvailableModels operation entirely — AWS returns AccessDeniedException
         // "Your subscription does not support this application". This is an account
-        // entitlement, not a request bug, so surface a friendly, actionable message
-        // instead of the raw AWS JSON.
-        const isSubscriptionBlock = /AccessDeniedException/.test(error.message)
-          && /subscription does not support/i.test(error.message);
+        // entitlement, not a request bug (chat with the same token/profileArn works),
+        // so surface a friendly, actionable message instead of the raw AWS JSON.
+        const message = error?.message || "";
+        const isSubscriptionBlock = /AccessDeniedException/.test(message)
+          && /subscription does not support/i.test(message);
         warning = isSubscriptionBlock
-          ? "This Kiro account can't list models dynamically (AWS restricts it for this subscription). Showing the built-in Kiro models instead — they work for chat as usual."
-          : `Failed to fetch Kiro models: ${error.message}`;
-        console.log("Failed to fetch Kiro models dynamically, falling back to static:", error.message);
+          ? "This Kiro account can't list models dynamically (AWS restricts it for this subscription). The built-in Kiro models are already available and work for chat as usual."
+          : `Failed to fetch Kiro models: ${message}`;
+        console.log("Failed to fetch Kiro models dynamically, falling back to static:", message);
       }
 
-      // Dynamic listing failed — return the built-in Kiro catalog so the sync UI stays
-      // useful (rather than an empty list) and the page's static models still apply.
+      // Return an empty dynamic list so the client keeps using the built-in static
+      // catalog. Do NOT inject the static catalog here: this endpoint is shared with
+      // basic-chat, which would then show every Kiro model twice (static prefixed id
+      // + unprefixed live id that dedupe cannot collapse).
       return NextResponse.json({
         provider: connection.provider,
         connectionId: connection.id,
-        models: getModelsByProviderId("kiro"),
+        models: [],
         warning,
       });
     }
