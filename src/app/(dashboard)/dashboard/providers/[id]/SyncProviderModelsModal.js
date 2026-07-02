@@ -98,6 +98,8 @@ export default function SyncProviderModelsModal({
     [existingSet, models, selected]
   );
 
+  const addableCount = filteredModels.filter((model) => !existingSet.has(model.id)).length;
+
   const toggleModel = (modelId) => {
     if (existingSet.has(modelId)) return;
     setSelected((prev) => ({ ...prev, [modelId]: !prev[modelId] }));
@@ -179,6 +181,12 @@ export default function SyncProviderModelsModal({
         {error && <p className="break-words rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-500">{error}</p>}
         {warning && !error && <p className="break-words rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-600 dark:text-yellow-400">{warning}</p>}
 
+        {models.length > 0 && addableCount === 0 && (
+          <p className="break-words rounded-lg border border-border-subtle bg-sidebar px-3 py-2 text-xs text-text-muted">
+            All upstream models are already added.
+          </p>
+        )}
+
         <div className="min-h-[220px] overflow-y-auto rounded-lg border border-border">
           {loading ? (
             <div className="flex h-56 items-center justify-center text-sm text-text-muted">
@@ -202,7 +210,7 @@ export default function SyncProviderModelsModal({
                     disabled={exists}
                     className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-sidebar/60 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <span className={`flex h-5 w-5 items-center justify-center rounded border text-[13px] ${checked ? "border-primary bg-primary text-white" : "border-border text-transparent"}`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded border text-[13px] ${exists ? "border-border bg-sidebar text-text-muted" : checked ? "border-primary bg-primary text-white" : "border-border text-transparent"}`}>
                       <span className="material-symbols-outlined text-[14px]">check</span>
                     </span>
                     <span className="min-w-0">
@@ -224,7 +232,7 @@ export default function SyncProviderModelsModal({
 
         <div className="flex flex-col-reverse gap-2 border-t border-border-subtle pt-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-text-muted">
-            {models.length} upstream model{models.length === 1 ? "" : "s"} · {selectedModels.length} selected
+            {models.length} upstream model{models.length === 1 ? "" : "s"} · {selectedModels.length} selected · {addableCount} available to add
           </p>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button size="sm" variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
