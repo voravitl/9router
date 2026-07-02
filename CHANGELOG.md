@@ -1,3 +1,14 @@
+# v0.5.16 (2026-07-02)
+
+## Features
+- **Providers**: gate the Sync Models button to providers whose upstream can list LLM models (hide it for media/search/embedding/web-cookie providers) — voravitl
+
+## Fixes
+- **Kiro**: send the kiro-ide User-Agent on CodeWhisperer management calls so model sync works (was 403 "subscription does not support this application") — voravitl
+- **Kiro**: fall back to the default profileArn when listing models — voravitl
+- **Ollama**: resolve the Cloud API key from the `apiKey` field so model sync works — voravitl
+- **Providers**: restore provider detail page features lost in a bad merge (bulk import, one-by-one test, auto-ping, multi-select, custom models, Qoder import) — voravitl
+
 # v0.5.15 (2026-06-29)
 
 ## Features
