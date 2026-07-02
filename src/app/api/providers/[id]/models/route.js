@@ -4,9 +4,10 @@ import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/sha
 import { KiroService } from "@/lib/oauth/services/kiro";
 import { OllamaService } from "@/lib/oauth/services/ollama";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
-import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken, refreshTokenByProvider } from "@/sse/services/tokenRefresh";
+import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { resolveDefaultProfileArn } from "open-sse/config/kiroConstants.js";
+import { refreshProviderCredentials } from "open-sse/services/oauthCredentialManager.js";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -547,21 +548,26 @@ export async function GET(request, { params }) {
     // chat requests refresh but this endpoint historically did not. Refresh and
     // retry once on 401/403; api-key providers have no refreshToken so this is a
     // no-op. github's bearer is a Copilot token minted separately from its OAuth
-    // token, so github is not covered by this generic refresh.
-    if (!response.ok && (response.status === 401 || response.status === 403) && connection.refreshToken) {
+    // token (refreshing the OAuth token would not mint a new Copilot token), so
+    // github is explicitly excluded below and not covered by this generic refresh.
+    const usesCopilotToken = !!connection.providerSpecificData?.copilotToken;
+    if (
+      !response.ok &&
+      (response.status === 401 || response.status === 403) &&
+      connection.refreshToken &&
+      !usesCopilotToken
+    ) {
       try {
-        const refreshed = await refreshTokenByProvider(connection.provider, {
-          refreshToken: connection.refreshToken,
-          providerSpecificData: connection.providerSpecificData,
-        });
+        const refreshed = await refreshProviderCredentials(connection.provider, connection, console);
 
         if (refreshed?.accessToken) {
-          await updateProviderCredentials(connection.id, {
-            accessToken: refreshed.accessToken,
-            refreshToken: refreshed.refreshToken || connection.refreshToken,
-            expiresIn: refreshed.expiresIn,
-            ...(refreshed.expiresAt ? { expiresAt: refreshed.expiresAt } : {}),
-          });
+          await updateProviderCredentials(connection.id, refreshed);
+
+          // Merge refreshed providerSpecificData (e.g. qwen's rotated resourceUrl)
+          // into the in-memory connection so the retry targets the new shard.
+          if (refreshed.providerSpecificData) {
+            connection.providerSpecificData = refreshed.providerSpecificData;
+          }
 
           ({ requestUrl, requestOptions } = buildFetchRequest(refreshed.accessToken));
           response = await fetch(requestUrl, requestOptions);
