@@ -11,6 +11,16 @@ import { KIRO_CONFIG, assertValidAwsRegion } from "../constants/oauth.js";
 
 const KIRO_AUTH_SERVICE = "https://prod.us-east-1.auth.desktop.kiro.dev";
 
+// CodeWhisperer gates management operations (ListAvailableModels / ListAvailableProfiles)
+// on the calling application's identity. Without the kiro-ide User-Agent it returns 403
+// AccessDeniedException "Your subscription does not support this application" — even though
+// chat (GenerateAssistantResponse) succeeds with the same token, because chat sends these
+// same headers. Mirror the chat transport's identity on every CodeWhisperer call.
+const KIRO_IDE_UA_HEADERS = {
+  "User-Agent": "AWS-SDK-JS/3.0.0 kiro-ide/1.0.0",
+  "X-Amz-User-Agent": "aws-sdk-js/3.0.0 kiro-ide/1.0.0",
+};
+
 export class KiroService {
   /**
    * Register OIDC client with AWS SSO
@@ -277,6 +287,7 @@ export class KiroService {
         "x-amz-target": "AmazonCodeWhispererService.ListAvailableProfiles",
         "Authorization": `Bearer ${accessToken}`,
         "Accept": "application/json",
+        ...KIRO_IDE_UA_HEADERS,
       },
       body: JSON.stringify({ maxResults: 10 }),
     });
@@ -341,6 +352,7 @@ export class KiroService {
         "x-amz-target": target,
         "Authorization": `Bearer ${accessToken}`,
         "Accept": "application/json",
+        ...KIRO_IDE_UA_HEADERS,
       },
       body: JSON.stringify(body),
     });
