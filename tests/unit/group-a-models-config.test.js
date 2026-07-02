@@ -64,7 +64,6 @@ describe("Group A models config", () => {
       venice: "https://api.venice.ai/api/v1/models",
       "vercel-ai-gateway": "https://ai-gateway.vercel.sh/v1/models",
       "xiaomi-mimo": "https://api.xiaomimimo.com/v1/models",
-      "glm-cn": "https://open.bigmodel.cn/api/coding/paas/v4/models",
     };
 
     const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");

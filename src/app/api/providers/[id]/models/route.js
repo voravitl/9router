@@ -213,8 +213,7 @@ const PROVIDER_MODELS_CONFIG = {
   "vercel-ai-gateway": createOpenAIModelsConfig("https://ai-gateway.vercel.sh/v1/models"),
   "xiaomi-mimo": createOpenAIModelsConfig("https://api.xiaomimimo.com/v1/models"),
   // GLM coding API: non-standard /v4 path, verified live to return the OpenAI {object,data} shape
-  glm: createOpenAIModelsConfig("https://api.z.ai/api/coding/paas/v4/models"),
-  "glm-cn": createOpenAIModelsConfig("https://open.bigmodel.cn/api/coding/paas/v4/models")
+  glm: createOpenAIModelsConfig("https://api.z.ai/api/coding/paas/v4/models")
 };
 
 /**
