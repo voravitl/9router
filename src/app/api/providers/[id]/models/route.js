@@ -4,7 +4,7 @@ import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/sha
 import { KiroService } from "@/lib/oauth/services/kiro";
 import { OllamaService } from "@/lib/oauth/services/ollama";
 import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
-import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
+import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken, refreshTokenByProvider } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { resolveDefaultProfileArn } from "open-sse/config/kiroConstants.js";
 
@@ -518,32 +518,59 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
-    // Build request URL
-    let url = config.url;
-    if (connection.provider === "qwen") {
-      url = resolveQwenModelsUrl(connection);
-    }
-    if (config.authQuery) {
-      url += `?${config.authQuery}=${token}`;
-    }
+    const buildFetchRequest = (authToken) => {
+      let requestUrl = config.url;
+      if (connection.provider === "qwen") {
+        requestUrl = resolveQwenModelsUrl(connection);
+      }
+      if (config.authQuery) {
+        requestUrl += `?${config.authQuery}=${authToken}`;
+      }
 
-    // Build headers
-    const headers = { ...config.headers };
-    if (config.authHeader && !config.authQuery) {
-      headers[config.authHeader] = (config.authPrefix || "") + token;
-    }
+      const headers = { ...config.headers };
+      if (config.authHeader && !config.authQuery) {
+        headers[config.authHeader] = (config.authPrefix || "") + authToken;
+      }
 
-    // Make request
-    const fetchOptions = {
-      method: config.method,
-      headers
+      const requestOptions = { method: config.method, headers };
+      if (config.body && config.method === "POST") {
+        requestOptions.body = JSON.stringify(config.body);
+      }
+
+      return { requestUrl, requestOptions };
     };
 
-    if (config.body && config.method === "POST") {
-      fetchOptions.body = JSON.stringify(config.body);
-    }
+    let { requestUrl, requestOptions } = buildFetchRequest(token);
+    let response = await fetch(requestUrl, requestOptions);
 
-    const response = await fetch(url, fetchOptions);
+    // OAuth providers (xai, qwen, codex, iflow, ...) use short-lived tokens that
+    // chat requests refresh but this endpoint historically did not. Refresh and
+    // retry once on 401/403; api-key providers have no refreshToken so this is a
+    // no-op. github's bearer is a Copilot token minted separately from its OAuth
+    // token, so github is not covered by this generic refresh.
+    if (!response.ok && (response.status === 401 || response.status === 403) && connection.refreshToken) {
+      try {
+        const refreshed = await refreshTokenByProvider(connection.provider, {
+          refreshToken: connection.refreshToken,
+          providerSpecificData: connection.providerSpecificData,
+        });
+
+        if (refreshed?.accessToken) {
+          await updateProviderCredentials(connection.id, {
+            accessToken: refreshed.accessToken,
+            refreshToken: refreshed.refreshToken || connection.refreshToken,
+            expiresIn: refreshed.expiresIn,
+            ...(refreshed.expiresAt ? { expiresAt: refreshed.expiresAt } : {}),
+          });
+
+          ({ requestUrl, requestOptions } = buildFetchRequest(refreshed.accessToken));
+          response = await fetch(requestUrl, requestOptions);
+        }
+      } catch (refreshError) {
+        console.log(`Error refreshing token for ${connection.provider}:`, refreshError);
+        // keep the original response, fall through to the error path below
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
