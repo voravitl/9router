@@ -155,6 +155,21 @@ export function getProvidersByKind(kind) {
     .sort((a, b) => (a.priority ?? a.mediaPriority ?? 999) - (b.priority ?? b.mediaPriority ?? 999));
 }
 
+// Helper: can this provider's upstream list LLM models (i.e. is the "Sync Models"
+// feature meaningful)? False for media/search/embedding providers (serviceKinds without
+// "llm") and web-cookie providers (session auth, no models API). openai/anthropic
+// compatible providers always expose a /models endpoint. This is the single source of
+// truth the provider page uses to gate the Sync button; the models route rejects the
+// rest with an error anyway.
+export function providerSupportsModelSync(providerId) {
+  if (isOpenAICompatibleProvider(providerId) || isAnthropicCompatibleProvider(providerId)) return true;
+  if (WEB_COOKIE_PROVIDERS[providerId]) return false;
+  const provider = AI_PROVIDERS[providerId];
+  if (!provider) return false;
+  const kinds = provider.serviceKinds ?? ["llm"];
+  return kinds.includes("llm");
+}
+
 // Derive từ registry features flags
 export const USAGE_SUPPORTED_PROVIDERS = REGISTRY
   .filter(r => r.features?.usage)

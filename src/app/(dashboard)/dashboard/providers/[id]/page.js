@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthWrapper, CursorAuthModal, IFlowCookieModal, GitLabAuthModal, Toggle, Select, EditConnectionModal, NoAuthProxyCard, ConfirmModal } from "@/shared/components";
-import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, AI_PROVIDERS, THINKING_CONFIG } from "@/shared/constants/providers";
+import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS, WEB_COOKIE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider, providerSupportsModelSync, AI_PROVIDERS, THINKING_CONFIG } from "@/shared/constants/providers";
 import { getModelsByProviderId, getModelKind } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { useModelCaps } from "@/shared/hooks/useModelCaps";
@@ -1138,15 +1138,17 @@ export default function ProviderDetailPage() {
           Add Model
         </button>
 
-        <button
-          onClick={() => setShowSyncModels(true)}
-          disabled={!connections.some((conn) => conn.isActive !== false)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-3 py-2 text-xs text-blue-600 transition-colors hover:border-blue-500 hover:bg-blue-500/5 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400 sm:w-auto"
-          title={connections.some((conn) => conn.isActive !== false) ? "Sync models from upstream" : "Add an active connection before syncing"}
-        >
-          <span className="material-symbols-outlined text-sm">sync</span>
-          Sync Models
-        </button>
+        {providerSupportsModelSync(providerId) && (
+          <button
+            onClick={() => setShowSyncModels(true)}
+            disabled={!connections.some((conn) => conn.isActive !== false)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-blue-500/40 px-3 py-2 text-xs text-blue-600 transition-colors hover:border-blue-500 hover:bg-blue-500/5 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-400 sm:w-auto"
+            title={connections.some((conn) => conn.isActive !== false) ? "Sync models from upstream" : "Add an active connection before syncing"}
+          >
+            <span className="material-symbols-outlined text-sm">sync</span>
+            Sync Models
+          </button>
+        )}
 
         {/* Import Qoder models button — only show for qoder provider */}
         {providerId === "qoder" && connections.some((conn) => conn.isActive !== false) && (
@@ -1636,7 +1638,7 @@ export default function ProviderDetailPage() {
             const activeIds = allIds.filter((id) => !disabledModelIds.includes(id));
             return (
               <div className="flex gap-2">
-                {connections.some((conn) => conn.isActive !== false) && (
+                {providerSupportsModelSync(providerId) && connections.some((conn) => conn.isActive !== false) && (
                   <Button size="sm" variant="secondary" icon="sync" onClick={() => setShowSyncModels(true)}>
                     Sync Models
                   </Button>
