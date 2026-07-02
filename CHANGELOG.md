@@ -1,3 +1,8 @@
+# v0.5.17 (2026-07-02)
+
+## Fixes
+- **Providers**: xai (Grok) connection test returned "Provider test not supported"; add xai to `OAUTH_TEST_CONFIG` (probes `api.x.ai/v1/models` with Bearer, non-refreshable so expired/revoked tokens surface as 401) + regression test (#11) — voravitl
+
 # v0.5.16 (2026-07-02)
 
 ## Features
