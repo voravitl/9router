@@ -93,11 +93,15 @@ const OAUTH_TEST_CONFIG = {
   },
   "codebuddy-cn": { tokenExists: true },
   xai: {
+    // Test by hitting xAI's models endpoint with the Grok Build OAuth token.
+    // refreshable: false because refreshOAuthToken has no xai branch — an
+    // expired token would short-circuit instead of probing. Let the live URL
+    // probe run so expired/revoked tokens surface as 401 (users re-login).
     url: "https://api.x.ai/v1/models",
     method: "GET",
     authHeader: "Authorization",
     authPrefix: "Bearer ",
-    refreshable: true,
+    refreshable: false,
   },
   kimchi: {
     url: KIMCHI_CONFIG.validationUrl || "https://api.cast.ai/v1/llm/openai/supported-providers",
