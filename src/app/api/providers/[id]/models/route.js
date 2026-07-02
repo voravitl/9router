@@ -201,7 +201,20 @@ const PROVIDER_MODELS_CONFIG = {
   nanobanana: createOpenAIModelsConfig("https://api.nanobananaapi.ai/v1/models"),
   chutes: createOpenAIModelsConfig("https://llm.chutes.ai/v1/models"),
   nvidia: createOpenAIModelsConfig("https://integrate.api.nvidia.com/v1/models"),
-  assemblyai: createOpenAIModelsConfig("https://api.assemblyai.com/v1/models")
+  assemblyai: createOpenAIModelsConfig("https://api.assemblyai.com/v1/models"),
+
+  // API-key providers with OpenAI-style GET /models endpoints
+  blackbox: createOpenAIModelsConfig("https://api.blackbox.ai/v1/models"),
+  kimi: createOpenAIModelsConfig("https://api.kimi.com/coding/v1/models"),
+  minimax: createOpenAIModelsConfig("https://api.minimax.io/v1/models"),
+  "minimax-cn": createOpenAIModelsConfig("https://api.minimaxi.com/v1/models"),
+  "opencode-go": createOpenAIModelsConfig("https://opencode.ai/zen/go/v1/models"),
+  venice: createOpenAIModelsConfig("https://api.venice.ai/api/v1/models"),
+  "vercel-ai-gateway": createOpenAIModelsConfig("https://ai-gateway.vercel.sh/v1/models"),
+  "xiaomi-mimo": createOpenAIModelsConfig("https://api.xiaomimimo.com/v1/models"),
+  // GLM coding API: non-standard /v4 path, verified live to return the OpenAI {object,data} shape
+  glm: createOpenAIModelsConfig("https://api.z.ai/api/coding/paas/v4/models"),
+  "glm-cn": createOpenAIModelsConfig("https://open.bigmodel.cn/api/coding/paas/v4/models")
 };
 
 /**
