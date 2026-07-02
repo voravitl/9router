@@ -7,6 +7,7 @@ import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { resolveDefaultProfileArn } from "open-sse/config/kiroConstants.js";
+import { refreshProviderCredentials } from "open-sse/services/oauthCredentialManager.js";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -518,32 +519,72 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "No valid token found" }, { status: 401 });
     }
 
-    // Build request URL
-    let url = config.url;
-    if (connection.provider === "qwen") {
-      url = resolveQwenModelsUrl(connection);
-    }
-    if (config.authQuery) {
-      url += `?${config.authQuery}=${token}`;
-    }
+    const buildFetchRequest = (authToken, conn = connection) => {
+      let requestUrl = config.url;
+      if (conn.provider === "qwen") {
+        requestUrl = resolveQwenModelsUrl(conn);
+      }
+      if (config.authQuery) {
+        requestUrl += `?${config.authQuery}=${authToken}`;
+      }
 
-    // Build headers
-    const headers = { ...config.headers };
-    if (config.authHeader && !config.authQuery) {
-      headers[config.authHeader] = (config.authPrefix || "") + token;
-    }
+      const headers = { ...config.headers };
+      if (config.authHeader && !config.authQuery) {
+        headers[config.authHeader] = (config.authPrefix || "") + authToken;
+      }
 
-    // Make request
-    const fetchOptions = {
-      method: config.method,
-      headers
+      const requestOptions = { method: config.method, headers };
+      if (config.body && config.method === "POST") {
+        requestOptions.body = JSON.stringify(config.body);
+      }
+
+      return { requestUrl, requestOptions };
     };
 
-    if (config.body && config.method === "POST") {
-      fetchOptions.body = JSON.stringify(config.body);
-    }
+    let { requestUrl, requestOptions } = buildFetchRequest(token);
+    let response = await fetch(requestUrl, requestOptions);
 
-    const response = await fetch(url, fetchOptions);
+    // OAuth providers (xai, qwen, codex, iflow, ...) use short-lived tokens that
+    // chat requests refresh but this endpoint historically did not. Refresh and
+    // retry once on 401/403; api-key providers have no refreshToken so this is a
+    // no-op. github's bearer is a Copilot token minted separately from its OAuth
+    // token (refreshing the OAuth token would not mint a new Copilot token), so
+    // github is explicitly excluded below and not covered by this generic refresh.
+    const usesCopilotToken = !!connection.providerSpecificData?.copilotToken;
+    if (
+      !response.ok &&
+      (response.status === 401 || response.status === 403) &&
+      connection.refreshToken &&
+      !usesCopilotToken
+    ) {
+      try {
+        const refreshed = await refreshProviderCredentials(connection.provider, connection, console);
+
+        if (refreshed?.accessToken) {
+          await updateProviderCredentials(connection.id, refreshed);
+
+          // Build a request-scoped view with the refreshed providerSpecificData
+          // (e.g. qwen's rotated resourceUrl) merged in, without mutating the
+          // loaded connection record itself.
+          const refreshedConn = refreshed.providerSpecificData
+            ? {
+                ...connection,
+                ...refreshed,
+                providerSpecificData: {
+                  ...connection.providerSpecificData,
+                  ...refreshed.providerSpecificData,
+                },
+              }
+            : connection;
+
+          ({ requestUrl, requestOptions } = buildFetchRequest(refreshed.accessToken, refreshedConn));
+          response = await fetch(requestUrl, requestOptions);
+        }
+      } catch (refreshError) {
+        console.log(`Error refreshing token for ${connection.provider}:`, refreshError);
+        // keep the original response, fall through to the error path below
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
