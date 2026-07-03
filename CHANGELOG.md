@@ -1,3 +1,9 @@
+# v0.5.20 (2026-07-03)
+
+## Fixes
+- **Models**: combos (e.g. `rr-glm5.2`) returned by `/v1/models` did not expose `context_window`, so clients (Claude Code) could not see a combo's context. Now resolved dynamically as the **min** of member context windows — safe for every model the combo may route to (#17) — voravitl
+- **Models**: web search/fetch combos no longer resolve a chat `context_window` (they have none), and combo context resolution no longer fabricates the 200k DEFAULT floor for genuinely-unknown members — a real 200k member is still honoured via provenance-based `resolveKnownContextWindow()` (#20) — voravitl
+
 # v0.5.19 (2026-07-03)
 
 ## Fixes
