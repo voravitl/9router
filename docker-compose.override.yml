@@ -1,7 +1,7 @@
 # Local development override - builds from current directory
 services:
-  9router:
-    image: 9router:local
+  888router:
+    image: 888router:local
     build:
       context: .
       dockerfile: Dockerfile
