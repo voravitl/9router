@@ -1,3 +1,11 @@
+# v0.5.19 (2026-07-03)
+
+## Fixes
+- **Models**: `/v1/models` and `/v1/models/info` did not expose `context_window`, so clients (Claude Code) could not see the real context window and fell back to 200k. Resolve capabilities via `getCapabilitiesForModel()` in both routes and set `context_window`/`contextWindow` on the response. Also promote `glm-5.2` to global `MODEL_CAPABILITIES` so the 1M context wins regardless of provider alias (was hidden under `codebuddy-cn`) (#14) — voravitl
+
+## Chores
+- **Docker**: rename images, services, and volumes from `9router` to `888router` (publish target now `voravitl/888router`) (#14) — voravitl
+
 # v0.5.18 (2026-07-02)
 
 ## Fixes
