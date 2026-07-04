@@ -48,6 +48,14 @@ export async function handleChat(request, clientRawRequest = null) {
 
   // Log request endpoint and model
   const url = new URL(request.url);
+
+  // Claude Code sends a "[1m]" suffix on model ids to activate its internal
+  // 1M-context registry entry (it does NOT read context_window from /v1/models).
+  // z.ai and other upstreams reject the suffix ("Unknown Model"), so strip it
+  // here — the suffix is a Claude-Code-side signal, not a real model id part.
+  if (typeof body.model === "string" && /\[1m\]$/i.test(body.model)) {
+    body.model = body.model.replace(/\[1m\]$/i, "");
+  }
   const modelStr = body.model;
 
   // Count messages (support both messages[] and input[] formats)
