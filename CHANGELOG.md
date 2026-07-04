@@ -1,3 +1,9 @@
+# v0.7.2 (2026-07-05)
+
+## Features
+
+- **Usage**: `/api/usage/summary` now accepts a 9router Bearer API key (`Authorization: Bearer <key>`) in addition to the dashboard cookie auth, so external clients (the OMC HUD `rateLimitsProvider` script) can read aggregated limits without a browser session. Cookie auth is unchanged for the Web Dashboard (#40) — voravitl
+
 # v0.7.1 (2026-07-04)
 
 ## Fixes
