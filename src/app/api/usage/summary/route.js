@@ -19,7 +19,8 @@ async function isAuthorized(request) {
       const db = await getAdapter();
       const row = db.prepare("SELECT isActive FROM apiKeys WHERE key = ?").get(token);
       return !!row && (row.isActive === 1 || row.isActive === true);
-    } catch {
+    } catch (e) {
+      console.warn("[Usage/summary] Bearer auth check failed:", e?.message);
       return false;
     }
   }
