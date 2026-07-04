@@ -7,6 +7,18 @@ import { getUsageForProvider } from "open-sse/services/usage.js";
 import { ID_TO_ALIAS as PROVIDER_ID_TO_ALIAS, AI_PROVIDERS } from "@/shared/constants/providers";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials, isAuthExpiredMessage } from "../[connectionId]/route.js";
+import { validateApiKey } from "@/lib/localDb";
+
+// Accept either the dashboard cookie auth (UI) or a 9router Bearer API key
+// (for external callers like the OMC HUD rateLimitsProvider script).
+async function isAuthorized(request) {
+  const auth = request.headers.get("authorization") || "";
+  if (auth.startsWith("Bearer ")) {
+    try { return await validateApiKey(auth.slice(7).trim()); } catch { return false; }
+  }
+  // Fall back to cookie/session auth — handled by the existing dashboard layer.
+  return true;
+}
 
 /**
  * GET /api/usage/summary
@@ -60,7 +72,10 @@ function buildProxyOptions(conn) {
   };
 }
 
-export async function GET() {
+export async function GET(request) {
+  if (!(await isAuthorized(request))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const all = await getProviderConnections();
     const active = all.filter((c) => c && c.isActive !== false);
