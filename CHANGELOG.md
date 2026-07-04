@@ -1,3 +1,9 @@
+# v0.6.2 (2026-07-04)
+
+## Fixes
+
+- **UI**: the dynamic `[1m]` copy hook (v0.6.1) silently 401'd in the browser because it fetched `/v1/models` (Bearer auth). Switched to `/api/models` (cookie auth) and added `contextWindow` to its caps response, so the suffix now resolves correctly when copying from the Web Dashboard (#31) — voravitl
+
 # v0.6.1 (2026-07-04)
 
 ## Features
