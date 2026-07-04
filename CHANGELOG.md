@@ -1,3 +1,9 @@
+# v0.7.3 (2026-07-05)
+
+## Fixes
+
+- **Usage**: Bearer API key auth on `/api/usage/summary` returned 401 for valid keys because the `validateApiKey` wrapper resolved to false in production. Now queries `apiKeys` directly via `getAdapter` (same pattern as the other repos) (#42) — voravitl
+
 # v0.7.2 (2026-07-05)
 
 ## Features
