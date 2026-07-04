@@ -15,7 +15,10 @@ async function loadContextWindows() {
   inflight = (async () => {
     try {
       const res = await fetch("/v1/models", { credentials: "include" });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        console.warn("[useModelContextWindows] /v1/models fetch failed", res.status);
+        return null;
+      }
       const data = await res.json();
       const map = {};
       for (const m of data.data || []) {
@@ -26,7 +29,8 @@ async function loadContextWindows() {
       }
       cache = map;
       return map;
-    } catch {
+    } catch (e) {
+      console.warn("[useModelContextWindows] /v1/models fetch error", e);
       return null;
     } finally {
       inflight = null;
@@ -35,12 +39,11 @@ async function loadContextWindows() {
   return inflight;
 }
 
-const ONE_MILLION = 1_000_000;
-
 /**
  * Returns a lookup: (fullModel: "alias/model") => contextWindow (number|undefined).
  * `ready` is false until the first fetch settles; callers may copy with a
- * catalog fallback in the meantime.
+ * catalog fallback in the meantime. Cache invalidates on `customModelChanged`
+ * (dispatched by the providers page when models are added/removed/aliased).
  */
 export function useModelContextWindows() {
   const [map, setMap] = useState(cache);
@@ -48,11 +51,11 @@ export function useModelContextWindows() {
 
   useEffect(() => {
     let alive = true;
-    if (cache) { setMap(cache); setReady(true); return; }
-    loadContextWindows().then((m) => {
-      if (alive && m) { setMap(m); setReady(true); }
-    });
-    return () => { alive = false; };
+    const invalidate = () => { cache = null; setMap(null); setReady(false); loadContextWindows().then((m) => { if (alive && m) { setMap(m); setReady(true); } }); };
+    if (cache) { setMap(cache); setReady(true); }
+    else loadContextWindows().then((m) => { if (alive && m) { setMap(m); setReady(true); } });
+    window.addEventListener("customModelChanged", invalidate);
+    return () => { alive = false; window.removeEventListener("customModelChanged", invalidate); };
   }, []);
 
   return { contextByFullModel: map || {}, ready };
@@ -61,6 +64,7 @@ export function useModelContextWindows() {
 /**
  * Resolve a full model id to its context window — prefer the cached live
  * /v1/models entry, fall back to the static capability catalog, then undefined.
+ * fullModel MUST be in "alias/model" form for the catalog fallback to fire.
  */
 export function resolveContextWindow(contextByFullModel, fullModel) {
   if (typeof fullModel !== "string" || !fullModel.includes("/")) return undefined;
@@ -69,8 +73,4 @@ export function resolveContextWindow(contextByFullModel, fullModel) {
   const alias = fullModel.slice(0, slash);
   const model = fullModel.slice(slash + 1);
   return getCapabilitiesForModel(alias, model)?.contextWindow;
-}
-
-export function isOneMillionContext(cw) {
-  return typeof cw === "number" && cw >= ONE_MILLION;
 }

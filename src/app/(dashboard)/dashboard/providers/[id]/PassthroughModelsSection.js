@@ -4,12 +4,13 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { Button } from "@/shared/components";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
-
-const ONE_MILLION = 1_000_000;
+import { fullModelWithSuffix } from "@/shared/utils/claudeCodeModelId";
 
 function PassthroughModelRow({ modelId, fullModel, copied, onCopy, getContextWindow, onDeleteAlias, onTest, testStatus, isTesting }) {
-  const cw = getContextWindow?.(fullModel);
-  const copyText = cw >= ONE_MILLION ? `${fullModel}[1m]` : fullModel;
+  const slash = fullModel.indexOf("/");
+  const copyText = slash > 0
+    ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow?.(fullModel))
+    : fullModel;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
     : testStatus === "error"

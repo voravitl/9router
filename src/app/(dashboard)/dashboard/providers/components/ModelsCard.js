@@ -7,13 +7,14 @@ import { getModelsByProviderId, getModelKind } from "@/shared/constants/models";
 import { getProviderAlias } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { useModelContextWindows, resolveContextWindow } from "@/shared/hooks/useModelContextWindows";
-
-const ONE_MILLION = 1_000_000;
+import { fullModelWithSuffix } from "@/shared/utils/claudeCodeModelId";
 
 // ── ModelRow ───────────────────────────────────────────────────
 export function ModelRow({ model, fullModel, copied, onCopy, getContextWindow, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting }) {
-  const cw = getContextWindow?.(fullModel);
-  const copyText = cw >= ONE_MILLION ? `${fullModel}[1m]` : fullModel;
+  const slash = fullModel.indexOf("/");
+  const copyText = slash > 0
+    ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow?.(fullModel))
+    : fullModel;
   const borderColor = testStatus === "ok" ? "border-green-500/40" : testStatus === "error" ? "border-red-500/40" : "border-border";
   const iconColor = testStatus === "ok" ? "#22c55e" : testStatus === "error" ? "#ef4444" : undefined;
 
