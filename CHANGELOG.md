@@ -1,3 +1,9 @@
+# v0.5.21 (2026-07-04)
+
+## Fixes
+
+- **Models**: GLM-5.2 exposed under dash/date-suffixed ids (e.g. `bpm/glm-5-2-260617` on BytePlus) resolved to 200k instead of its native 1M context, because the exact `glm-5.2` capability key only matches the dot form. Added `*glm-5.2*` / `*glm-5-2*` glob patterns (1M) before the `*glm-5*` 200k fallback so both forms resolve correctly (#22, #23) — voravitl
+
 # v0.5.20 (2026-07-03)
 
 ## Fixes
