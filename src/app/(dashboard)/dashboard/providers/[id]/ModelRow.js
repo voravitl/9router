@@ -1,7 +1,12 @@
 import PropTypes from "prop-types";
 import { CapacityBadges } from "@/shared/components";
+import { fullModelWithSuffix } from "@/shared/utils/claudeCodeModelId";
 
-export default function ModelRow({ model, fullModel, alias, copied, onCopy, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting, onDisable, caps }) {
+export default function ModelRow({ model, fullModel, alias, copied, onCopy, getContextWindow, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting, onDisable, caps }) {
+  const slash = typeof fullModel === "string" ? fullModel.indexOf("/") : -1;
+  const copyText = slash > 0
+    ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow?.(fullModel))
+    : fullModel;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
     : testStatus === "error"
@@ -48,7 +53,7 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, test
         )}
         <div className="relative shrink-0 group/btn">
           <button
-            onClick={() => onCopy(fullModel, `model-${model.id}`)}
+            onClick={() => onCopy(copyText, `model-${model.id}`)}
             className="rounded p-0.5 text-text-muted hover:bg-sidebar hover:text-primary"
           >
             <span className="material-symbols-outlined text-sm">
