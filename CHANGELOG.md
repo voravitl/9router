@@ -1,3 +1,9 @@
+# v0.6.0 (2026-07-04)
+
+## Features
+
+- **Claude Code**: strip the `[1m]` suffix from model ids at the chat handler boundary so Claude Code can activate its 1M-context registry entry (`ANTHROPIC_DEFAULT_OPUS_MODEL=glm/glm-5.2[1m]`) without upstreams (z.ai) rejecting the suffixed id as `Unknown Model`. The suffix is a Claude-Code-internal signal; it does not leak to upstream (#25, #26) — voravitl
+
 # v0.5.21 (2026-07-04)
 
 ## Fixes
