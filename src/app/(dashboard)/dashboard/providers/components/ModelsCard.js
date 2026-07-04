@@ -6,9 +6,15 @@ import { Card, Button, Modal } from "@/shared/components";
 import { getModelsByProviderId, getModelKind } from "@/shared/constants/models";
 import { getProviderAlias } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { useModelContextWindows, resolveContextWindow } from "@/shared/hooks/useModelContextWindows";
+import { fullModelWithSuffix } from "@/shared/utils/claudeCodeModelId";
 
 // ── ModelRow ───────────────────────────────────────────────────
-export function ModelRow({ model, fullModel, copied, onCopy, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting }) {
+export function ModelRow({ model, fullModel, copied, onCopy, getContextWindow, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting }) {
+  const slash = fullModel.indexOf("/");
+  const copyText = slash > 0
+    ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow?.(fullModel))
+    : fullModel;
   const borderColor = testStatus === "ok" ? "border-green-500/40" : testStatus === "error" ? "border-red-500/40" : "border-border";
   const iconColor = testStatus === "ok" ? "#22c55e" : testStatus === "error" ? "#ef4444" : undefined;
 
@@ -35,7 +41,7 @@ export function ModelRow({ model, fullModel, copied, onCopy, testStatus, isCusto
           </div>
         )}
         <div className="relative group/btn">
-          <button onClick={() => onCopy(fullModel, `model-${model.id}`)} className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary">
+          <button onClick={() => onCopy(copyText, `model-${model.id}`)} className="p-0.5 hover:bg-sidebar rounded text-text-muted hover:text-primary" title={copyText === fullModel ? "Copy model id" : "Copy model id with [1m] suffix for Claude Code 1M context"}>
             <span className="material-symbols-outlined text-sm">{copied === `model-${model.id}` ? "check" : "content_copy"}</span>
           </button>
           <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
@@ -110,6 +116,8 @@ AddCustomModelModal.propTypes = {
 // kindFilter: if provided, only shows models with matching type/kinds field.
 export default function ModelsCard({ providerId, kindFilter, providerAliasOverride }) {
   const { copied, copy } = useCopyToClipboard();
+  const { contextByFullModel } = useModelContextWindows();
+  const getContextWindow = (fullModel) => resolveContextWindow(contextByFullModel, fullModel);
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
   const [modelTestResults, setModelTestResults] = useState({});
@@ -239,6 +247,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
                 alias={existingAlias}
                 copied={copied}
                 onCopy={copy}
+                getContextWindow={getContextWindow}
                 onSetAlias={(alias) => handleSetAlias(model.id, alias)}
                 onDeleteAlias={() => handleDeleteAlias(existingAlias)}
                 testStatus={modelTestResults[model.id]}
@@ -256,6 +265,7 @@ export default function ModelsCard({ providerId, kindFilter, providerAliasOverri
               fullModel={`${providerAlias}/${model.id}`}
               copied={copied}
               onCopy={copy}
+              getContextWindow={getContextWindow}
               onSetAlias={() => {}}
               onDeleteAlias={() => handleDeleteCustomModel(model.id)}
               testStatus={modelTestResults[model.id]}

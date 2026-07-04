@@ -9,6 +9,7 @@ import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, FREE_TIER_PROVIDERS,
 import { getModelsByProviderId, getModelKind } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { useModelCaps } from "@/shared/hooks/useModelCaps";
+import { useModelContextWindows, resolveContextWindow } from "@/shared/hooks/useModelContextWindows";
 import { translate } from "@/i18n/runtime";
 import { fetchSuggestedModels } from "@/shared/utils/providerModelsFetcher";
 import { getProviderCustomModelRows } from "@/shared/utils/providerCustomModels";
@@ -79,6 +80,8 @@ export default function ProviderDetailPage() {
   const stopOneByOneRef = useRef(false);
   const [importingQoderModels, setImportingQoderModels] = useState(false);
   const { copied, copy } = useCopyToClipboard();
+  const { contextByFullModel } = useModelContextWindows();
+  const getContextWindow = (fullModel) => resolveContextWindow(contextByFullModel, fullModel);
 
   const AG_RISK_STORAGE_KEY = "ag_risk_confirmed";
 
@@ -1049,6 +1052,7 @@ export default function ProviderDetailPage() {
           customModels={customModels}
           copied={copied}
           onCopy={copy}
+          getContextWindow={getContextWindow}
           onSetAlias={handleSetAlias}
           onDeleteAlias={handleDeleteAlias}
           onAddCustomModel={(modelId) => handleAddCustomModel(modelId, "llm", providerStorageAlias)}
@@ -1086,6 +1090,7 @@ export default function ProviderDetailPage() {
             alias={model.alias}
             copied={copied}
             onCopy={copy}
+            getContextWindow={getContextWindow}
             onSetAlias={() => {}}
             onDeleteAlias={() => {
               if (model.source === "custom") {
@@ -1117,6 +1122,7 @@ export default function ProviderDetailPage() {
               alias={existingAlias}
               copied={copied}
               onCopy={copy}
+              getContextWindow={getContextWindow}
               onSetAlias={(alias) => handleSetAlias(model.id, alias, providerStorageAlias)}
               onDeleteAlias={() => handleDeleteAlias(existingAlias)}
               testStatus={modelTestResults[model.id]}
