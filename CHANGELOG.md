@@ -1,3 +1,9 @@
+# v0.7.1 (2026-07-04)
+
+## Fixes
+
+- **Usage**: `/api/usage/summary` returned 500 on every request because it imported a non-existent `PROVIDER_ID_TO_ALIAS` export (the file exports `ID_TO_ALIAS`). The bad import resolved to `undefined` and the alias lookup threw on the first connection. Fixed by importing `ID_TO_ALIAS` under the local alias (#38) — voravitl
+
 # v0.7.0 (2026-07-04)
 
 ## Features
