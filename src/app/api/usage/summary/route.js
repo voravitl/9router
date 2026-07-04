@@ -4,7 +4,7 @@ import "open-sse/index.js";
 import { NextResponse } from "next/server";
 import { getProviderConnections } from "@/lib/localDb";
 import { getUsageForProvider } from "open-sse/services/usage.js";
-import { PROVIDER_ID_TO_ALIAS, AI_PROVIDERS } from "@/shared/constants/providers";
+import { ID_TO_ALIAS as PROVIDER_ID_TO_ALIAS, AI_PROVIDERS } from "@/shared/constants/providers";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials, isAuthExpiredMessage } from "../[connectionId]/route.js";
 
@@ -66,9 +66,15 @@ export async function GET() {
     const active = all.filter((c) => c && c.isActive !== false);
 
     // Resolve proxy config once per connection (async), stash for sync access.
+    // Isolate per-connection failures so one bad row doesn't sink the batch.
     for (const conn of active) {
-      const cfg = await resolveConnectionProxyConfig(conn.providerSpecificData);
-      conn._resolvedProxy = cfg;
+      try {
+        const cfg = await resolveConnectionProxyConfig(conn.providerSpecificData);
+        conn._resolvedProxy = cfg;
+      } catch (e) {
+        console.warn(`[Usage/summary] ${conn.provider}: proxy resolve failed: ${e.message}`);
+        conn._resolvedProxy = {};
+      }
     }
 
     // Sequential OAuth refresh — parallel refresh would race on provider auth
@@ -76,6 +82,9 @@ export async function GET() {
     const refreshed = await refreshOAuthSequentially(active);
 
     // Parallel usage fetch — different upstreams, safe to fan out.
+    // Per-connection try/catch covers the whole chain (refresh already ran
+    // sequentially above; this is the fetch + auth-expiry retry) so one
+    // provider's bad day doesn't sink the batch.
     const results = await Promise.all(
       refreshed.map(async (conn) => {
         const id = conn.provider;
@@ -83,6 +92,7 @@ export async function GET() {
         const name = AI_PROVIDERS[id]?.display?.name || id;
         const proxyOptions = buildProxyOptions(conn);
         const isOAuth = Boolean(conn.refreshToken);
+        const base = { id, connectionId: conn.id, alias, name };
         try {
           let usage = await getUsageForProvider(conn, proxyOptions);
           // Auth-expired response → force-refresh + retry once (OAuth only).
@@ -92,19 +102,19 @@ export async function GET() {
               usage = await getUsageForProvider(retry.connection, proxyOptions);
             } catch (e) {
               console.warn(`[Usage/summary] ${id}: force refresh failed: ${e.message}`);
-              return { id, connectionId: conn.id, alias, name, authExpired: true };
+              return { ...base, authExpired: true };
             }
           }
           if (isAuthExpiredMessage(usage)) {
-            return { id, connectionId: conn.id, alias, name, authExpired: true };
+            return { ...base, authExpired: true };
           }
-          return { id, connectionId: conn.id, alias, name, usage };
+          return { ...base, usage };
         } catch (e) {
           if (isOAuth && /expired|401|unauthorized|re-authorize/i.test(e?.message || "")) {
-            return { id, connectionId: conn.id, alias, name, authExpired: true };
+            return { ...base, authExpired: true };
           }
           console.warn(`[Usage/summary] ${id}: ${e?.message || "fetch_failed"}`);
-          return { id, connectionId: conn.id, alias, name, skipped: true, reason: e?.message || "fetch_failed" };
+          return { ...base, skipped: true, reason: e?.message || "fetch_failed" };
         }
       }),
     );
