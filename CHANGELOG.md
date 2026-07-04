@@ -1,3 +1,9 @@
+# v0.6.1 (2026-07-04)
+
+## Features
+
+- **UI**: copy-to-clipboard on every model row in the Web Dashboard now appends `[1m]` when the model's resolved context window is ≥ 1M, so the copied value is Claude-Code-ready with zero user knowledge. Dynamic — resolved from the live `/v1/models` list (cached once per app, invalidated when models change), not a static catalog check. Server-side `[1m]` strip landed in v0.6.0; this is the UI companion (#28, #29) — voravitl
+
 # v0.6.0 (2026-07-04)
 
 ## Features
