@@ -216,7 +216,33 @@ const PROVIDER_MODELS_CONFIG = {
   "vercel-ai-gateway": createOpenAIModelsConfig("https://ai-gateway.vercel.sh/v1/models"),
   "xiaomi-mimo": createOpenAIModelsConfig("https://api.xiaomimimo.com/v1/models"),
   // GLM coding API: non-standard /v4 path, verified live to return the OpenAI {object,data} shape
-  glm: createOpenAIModelsConfig("https://api.z.ai/api/coding/paas/v4/models")
+  glm: createOpenAIModelsConfig("https://api.z.ai/api/coding/paas/v4/models"),
+
+  // Cloudflare Workers AI: account-scoped endpoint, requires accountId in path.
+  // URL resolved per-request in buildFetchRequest (below) from providerSpecificData.accountId.
+  // Response shape: { result: [{ id, name, description, source, task: { ... } }] }.
+  "cloudflare-ai": {
+    url: "https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/models/search",
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    authHeader: "Authorization",
+    authPrefix: "Bearer ",
+    parseResponse: (data) => {
+      // Workers AI returns { result: [...] } with model objects that have a
+      // richer shape than OpenAI's { id, object }. Filter to chat/text models
+      // (task.text-generation) and the image models (task.text-to-image) the
+      // registry already lists, mapping to { id, name }.
+      const list = Array.isArray(data?.result) ? data.result : [];
+      return list
+        .filter((m) => m?.id && (m?.task?.["text-generation"] || m?.task?.["text-to-image"]))
+        .map((m) => ({
+          id: m.id,
+          name: m.name || m.id,
+          description: m.description || "",
+          kind: m?.task?.["text-to-image"] ? "image" : "llm",
+        }));
+    },
+  },
 };
 
 /**
@@ -523,6 +549,14 @@ export async function GET(request, { params }) {
       let requestUrl = config.url;
       if (conn.provider === "qwen") {
         requestUrl = resolveQwenModelsUrl(conn);
+      }
+      // Cloudflare Workers AI: account-scoped URL needs accountId from PSD.
+      if (requestUrl.includes("{accountId}")) {
+        const accountId = conn.providerSpecificData?.accountId;
+        if (!accountId) {
+          throw new Error("cloudflare-ai requires accountId in providerSpecificData");
+        }
+        requestUrl = requestUrl.replace("{accountId}", encodeURIComponent(accountId));
       }
       if (config.authQuery) {
         requestUrl += `?${config.authQuery}=${authToken}`;
