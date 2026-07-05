@@ -90,11 +90,13 @@ async function main() {
     let buckets = [];
     for (const p of providers) {
       if (p.skipped || p.authExpired) continue;
-      const alias = p.alias || p.id || p.provider;
-      // Only render limits for the provider(s) the active model routes through.
-      // Empty want-set → unknown → show all (safe fallback).
-      if (want.size > 0 && !want.has(alias)) continue;
-      buckets = buckets.concat(bucketsFor(alias, p.usage));
+      // Match the active-model prefix against BOTH the alias and the provider id
+      // (e.g. user sets kiro/... but the connection's alias is "kr", id is "kiro").
+      const matches = want.size === 0
+        || want.has(p.alias) || want.has(p.id) || want.has(p.provider);
+      if (!matches) continue;
+      const label = p.alias || p.id || p.provider;
+      buckets = buckets.concat(bucketsFor(label, p.usage));
     }
     console.log(JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), buckets }));
   } catch {
