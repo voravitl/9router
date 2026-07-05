@@ -6,7 +6,7 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 // 9router. The prompt instructs Claude Code to read install-hud.md out of
 // the running container and follow it — no manual steps for the user.
 const HUD_SETUP_PROMPT =
-  "ติดตั้ง 9router HUD ให้หน่อย — อ่าน instruction จาก `docker exec 888router cat /app/cli/scripts/install-hud.md` แล้วทำตามทีละขั้น สรุปผลให้ฉันด้วย";
+  "Install the 9router OMC HUD provider: read the setup instructions from `docker exec 888router cat /app/cli/scripts/install-hud.md` and follow them step by step, then summarize the result for me.";
 
 export default function HudSetupButton() {
   const { copied, copy } = useCopyToClipboard();
