@@ -71,7 +71,6 @@ import p68 from "./openrouter.js";
 import p69 from "./perplexity-web.js";
 import p70 from "./perplexity.js";
 import p71 from "./playht.js";
-import p74 from "./qoder.js";
 import p75 from "./qwen.js";
 import p76 from "./recraft.js";
 import p77 from "./runwayml.js";
@@ -169,9 +168,6 @@ export default [
   p69,
   p70,
   p71,
-  p72,
-  p73,
-  p74,
   p75,
   p76,
   p77,
