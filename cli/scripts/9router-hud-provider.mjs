@@ -47,23 +47,39 @@ function bucketsFor(alias, usage) {
   if (quotas && typeof quotas === 'object') {
     for (const [qkey, qval] of Object.entries(quotas)) {
       if (!qval || typeof qval !== 'object') continue;
-      const pct = qval.used_percentage ?? qval.utilization ?? qval.percent;
+      const pct = qval.used_percentage ?? qval.utilization ?? qval.percent
+        ?? (typeof qval.remainingPercentage === 'number' ? 100 - qval.remainingPercentage : undefined);
+      const resetsAt = qval.resets_at || qval.reset_at || qval.resetAt || null;
       if (typeof pct === 'number') {
-        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'percent', value: pct }, resetsAt: qval.resets_at || qval.reset_at || null });
+        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'percent', value: pct }, resetsAt });
       } else if (typeof qval.used === 'number' && typeof qval.total === 'number') {
-        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'credit', used: qval.used, limit: qval.total }, resetsAt: qval.resets_at || null });
+        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'credit', used: qval.used, limit: qval.total }, resetsAt });
       } else if (typeof qval.remaining === 'number' && typeof qval.total === 'number') {
         const used = qval.total - qval.remaining;
-        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'credit', used, limit: qval.total }, resetsAt: qval.resets_at || null });
+        out.push({ id: `${alias}:${qkey}`, label: `${alias}:${shortLabel(qkey)}`, usage: { type: 'credit', used, limit: qval.total }, resetsAt });
       }
     }
   }
   return out;
 }
 
+// Resolve the provider alias(es) the user is actually routing through right
+// now, so the HUD only shows limits relevant to the active model. Reads the
+// same env Claude Code sets (ANTHROPIC_DEFAULT_*_MODEL = "alias/model[1m]").
+function activeProviderAliases() {
+  const ids = new Set();
+  for (const k of ['ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'ANTHROPIC_MODEL', 'NINEROUTER_MODEL']) {
+    const v = process.env[k];
+    if (typeof v !== 'string' || !v.includes('/')) continue;
+    ids.add(v.slice(0, v.indexOf('/')));
+  }
+  return ids;
+}
+
 async function main() {
   if (!TOKEN) { failEmpty(); return; }
   const url = `${NINEROUTER_URL}/api/usage/summary`;
+  const want = activeProviderAliases();
   try {
     const res = await fetchWithTimeout(url, {
       headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/json' },
@@ -74,7 +90,11 @@ async function main() {
     let buckets = [];
     for (const p of providers) {
       if (p.skipped || p.authExpired) continue;
-      buckets = buckets.concat(bucketsFor(p.alias || p.id || p.provider, p.usage));
+      const alias = p.alias || p.id || p.provider;
+      // Only render limits for the provider(s) the active model routes through.
+      // Empty want-set → unknown → show all (safe fallback).
+      if (want.size > 0 && !want.has(alias)) continue;
+      buckets = buckets.concat(bucketsFor(alias, p.usage));
     }
     console.log(JSON.stringify({ version: 1, generatedAt: new Date().toISOString(), buckets }));
   } catch {
