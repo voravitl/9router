@@ -36,11 +36,14 @@ Add (or merge into) the `omcHud` key:
   "omcHud": {
     "rateLimitsProvider": {
       "type": "custom",
-      "command": "node ~/.claude/scripts/9router-hud-provider.mjs"
+      "command": "node ~/.claude/scripts/9router-hud-provider.mjs",
+      "timeoutMs": 5000
     }
   }
 }
 ```
+
+**`timeoutMs: 5000` is required.** The OMC default is 800 ms, but `/api/usage/summary` fans out across every connected provider (~1.8–2.1 s for 15 providers). Without the raised timeout, OMC SIGTERMs the script on every render and shows `[cmd:err]`. Once the first run succeeds, OMC caches the result for 30 s, so subsequent renders are fast.
 
 Use the absolute path (no `~` tilde) when writing the file — expand it via `$HOME` so the value is portable. Preserve all other keys in settings.json.
 
