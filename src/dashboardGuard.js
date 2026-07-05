@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getSettings, validateApiKey } from "@/lib/localDb";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
+import {
+  PUBLIC_API_PATHS,
+  PUBLIC_PREFIXES,
+  ALWAYS_PROTECTED,
+  LOCAL_ONLY_PATHS,
+} from "@/lib/route-manifest";
 
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
@@ -18,74 +24,13 @@ async function hasValidCliToken(request) {
   return token === await getCliToken();
 }
 
-// Public API paths — no auth required (LLM API has its own key auth inside handler).
-const PUBLIC_API_PATHS = [
-  "/api/health",
-  "/api/init",
-  "/api/locale",
-  "/api/auth/login",
-  "/api/auth/logout",
-  "/api/auth/status",
-  "/api/auth/oidc",
-  "/api/version",
-  "/api/settings/require-login",
-  // Aggregate usage endpoint — does its own auth (Bearer API key OR cookie),
-  // see src/app/api/usage/summary/route.js. Listed public so the guard doesn't
-  // 401 the Bearer path before the route can validate it.
-  "/api/usage/summary",
-];
-
-// Public top-level prefixes (LLM API endpoints with their own API key auth).
-const PUBLIC_PREFIXES = ["/v1", "/v1beta", "/api/v1", "/api/v1beta", "/codex"];
-
-// Always require JWT token regardless of requireLogin setting
-const ALWAYS_PROTECTED = [
-  "/api/shutdown",
-  "/api/settings/database",
-  "/api/version/shutdown",
-  "/api/version/update",
-  "/api/oauth/cursor/auto-import",
-  "/api/oauth/kiro/auto-import",
-];
-
-// Require auth, but allow through if requireLogin is disabled
-const PROTECTED_API_PATHS = [
-  "/api/settings",
-  "/api/keys",
-  "/api/providers",
-  "/api/provider-nodes",
-  "/api/proxy-pools",
-  "/api/combos",
-  "/api/models",
-  "/api/usage",
-  "/api/oauth",
-  "/api/cloud",
-  "/api/media-providers",
-  "/api/pricing",
-  "/api/tags",
-  "/api/cli-tools",
-  "/api/mcp",
-  "/api/translator",
-  "/api/tunnel",
-];
-
-// Routes that spawn child processes or read host secrets — restrict to localhost.
-const LOCAL_ONLY_PATHS = [
-  "/api/cli-tools/cowork-settings",
-  "/api/cli-tools/antigravity-mitm",
-  "/api/mcp/",
-  "/api/tunnel/tailscale-install",
-  "/api/tunnel/tailscale-enable",
-  "/api/tunnel/tailscale-disable",
-  "/api/tunnel/tailscale-check",
-  "/api/tunnel/enable",
-  "/api/tunnel/disable",
-  "/api/oauth/cursor/auto-import",
-  "/api/oauth/kiro/auto-import",
-  "/api/auth/reset-password",
-  "/api/headroom/start",
-  "/api/headroom/stop",
-];
+// Auth tiers are derived from src/lib/route-manifest.js — the single source of
+// truth for route → auth mapping. Each list is a prefix set matched with
+// .startsWith() in the order: local-only → always-jwt → bearer → none → default.
+// Add new API routes there, not here (prevents recurrence of bug #d4efde7).
+// NOTE: PROTECTED_API_PATHS existed in the legacy code as dead code (never read
+// here). It was a documentation-only aspirational list; routes it named are
+// handled by the catch-all /api/* default branch. Not reproduced in the manifest.
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 

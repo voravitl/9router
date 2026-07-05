@@ -8,6 +8,7 @@ import { ID_TO_ALIAS as PROVIDER_ID_TO_ALIAS, AI_PROVIDERS } from "@/shared/cons
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { refreshAndUpdateCredentials, isAuthExpiredMessage } from "../[connectionId]/route.js";
 import Database from "better-sqlite3";
+import { withLogging } from "@/lib/apiLogger";
 
 // Resolve the on-disk sqlite path the app uses (set at boot, fallback to default).
 function dbPath() {
@@ -87,7 +88,7 @@ function buildProxyOptions(conn) {
   };
 }
 
-export async function GET(request) {
+async function GETHandler(request) {
   if (!isAuthorizedSync(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -155,3 +156,5 @@ export async function GET(request) {
     return NextResponse.json({ error: "Failed to fetch usage summary" }, { status: 500 });
   }
 }
+
+export const GET = withLogging(GETHandler, "GET /api/usage/summary");
