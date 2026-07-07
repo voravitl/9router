@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProviderConnectionById } from "@/models";
+import { getSyncedModelsMap, stampSyncedModels } from "@/lib/db";
 import { isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { KiroService } from "@/lib/oauth/services/kiro";
 import { OllamaService } from "@/lib/oauth/services/ollama";
@@ -58,6 +59,37 @@ const appendCodexReviewModels = (models) => models.flatMap((model) => {
 });
 
 const parseCodexModels = (data) => appendCodexReviewModels(parseOpenAIStyleModels(data));
+
+// Enrich models with lastSyncedAt / firstSeenAt from the syncedModels kv.
+// Only stamps when models.length > 0 (empty list is a static-fallback signal).
+export async function buildModelsResponse({ provider, connectionId, models, warning }) {
+  const safeModels = Array.isArray(models) ? models.filter((m) => m && m.id) : [];
+  let stampMap = {};
+  if (safeModels.length > 0) {
+    try {
+      await stampSyncedModels(safeModels.map((m) => ({ connectionId, modelId: m.id })));
+      stampMap = await getSyncedModelsMap();
+    } catch (error) {
+      console.log("Failed to stamp synced models:", error?.message);
+      stampMap = {};
+    }
+  }
+  const enrichedModels = safeModels.map((m) => {
+    const entry = stampMap[`${connectionId}:${m.id}`];
+    return {
+      ...m,
+      lastSyncedAt: entry?.lastSyncedAt ?? null,
+      firstSeenAt: entry?.firstSeenAt ?? null,
+    };
+  });
+  const payload = {
+    provider,
+    connectionId,
+    models: enrichedModels,
+  };
+  if (warning !== undefined) payload.warning = warning;
+  return NextResponse.json(payload);
+}
 
 const createOpenAIModelsConfig = (url) => ({
   url,
@@ -282,7 +314,7 @@ export async function GET(request, { params }) {
       const data = await response.json();
       const models = data.data || data.models || [];
 
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models
@@ -323,7 +355,7 @@ export async function GET(request, { params }) {
       const data = await response.json();
       const models = data.data || data.models || [];
 
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models
@@ -352,7 +384,7 @@ export async function GET(request, { params }) {
         if (accessToken) {
           try {
             const models = await kiroService.listAvailableModels(accessToken, profileArn);
-            return NextResponse.json({
+            return buildModelsResponse({
               provider: connection.provider,
               connectionId: connection.id,
               models
@@ -371,7 +403,7 @@ export async function GET(request, { params }) {
 
                 const refreshedProfileArn = refreshed.profileArn || profileArn;
                 const models = await kiroService.listAvailableModels(refreshed.accessToken, refreshedProfileArn);
-                return NextResponse.json({
+                return buildModelsResponse({
                   provider: connection.provider,
                   connectionId: connection.id,
                   models
@@ -395,7 +427,7 @@ export async function GET(request, { params }) {
       // catalog. Do NOT inject the static catalog here: this endpoint is shared with
       // basic-chat, which would then show every Kiro model twice (static prefixed id
       // + unprefixed live id that dedupe cannot collapse).
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models: [],
@@ -413,7 +445,7 @@ export async function GET(request, { params }) {
         if (accessToken) {
           try {
             const models = await ollamaService.listAvailableModels(accessToken);
-            return NextResponse.json({
+            return buildModelsResponse({
               provider: connection.provider,
               connectionId: connection.id,
               models,
@@ -431,7 +463,7 @@ export async function GET(request, { params }) {
       }
 
       // Return empty dynamic list so UI falls back to static provider models
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models: [],
@@ -484,7 +516,7 @@ export async function GET(request, { params }) {
           const data = await response.json();
           const models = parseGeminiCliModels(data);
           if (models.length > 0) {
-            return NextResponse.json({
+            return buildModelsResponse({
               provider: connection.provider,
               connectionId: connection.id,
               models
@@ -501,7 +533,7 @@ export async function GET(request, { params }) {
       }
 
       // Return empty dynamic list so UI falls back to static provider models.
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models: [],
@@ -525,7 +557,7 @@ export async function GET(request, { params }) {
       }
       const data = await response.json();
       const models = parseOpenAIStyleModels(data);
-      return NextResponse.json({
+      return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
         models,
@@ -633,7 +665,7 @@ export async function GET(request, { params }) {
     const data = await response.json();
     const models = config.parseResponse(data);
 
-    return NextResponse.json({
+    return buildModelsResponse({
       provider: connection.provider,
       connectionId: connection.id,
       models

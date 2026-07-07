@@ -67,6 +67,11 @@ export {
   saveRequestDetail, getRequestDetails, getRequestDetailById,
 } from "./repos/requestDetailsRepo.js";
 
+// Synced models (lastSyncedAt / firstSeenAt per connection+model)
+export {
+  getSyncedModelsMap, stampSyncedModels, upsertSyncedModel,
+} from "./repos/syncedModelsRepo.js";
+
 // Export/import full DB
 export async function exportDb() {
   const db = await getAdapter();
@@ -83,12 +88,14 @@ export async function exportDb() {
     customModels: [],
     mitmAlias: {},
     pricing: {},
+    syncedModels: {},
   };
 
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'modelAliases'`)) out.modelAliases[r.key] = parseJson(r.value);
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'customModels'`)) out.customModels.push(parseJson(r.value));
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'mitmAlias'`)) out.mitmAlias[r.key] = parseJson(r.value);
   for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'pricing'`)) out.pricing[r.key] = parseJson(r.value);
+  for (const r of db.all(`SELECT key, value FROM kv WHERE scope = 'syncedModels'`)) out.syncedModels[r.key] = parseJson(r.value);
 
   return out;
 }
@@ -107,7 +114,7 @@ export async function importDb(payload) {
     db.run(`DELETE FROM proxyPools`);
     db.run(`DELETE FROM apiKeys`);
     db.run(`DELETE FROM combos`);
-    db.run(`DELETE FROM kv WHERE scope IN ('modelAliases', 'customModels', 'mitmAlias', 'pricing')`);
+    db.run(`DELETE FROM kv WHERE scope IN ('modelAliases', 'customModels', 'mitmAlias', 'pricing', 'syncedModels')`);
 
     // Settings
     if (payload.settings) {
@@ -159,6 +166,9 @@ export async function importDb(payload) {
     }
     for (const [provider, models] of Object.entries(payload.pricing || {})) {
       db.run(`INSERT OR REPLACE INTO kv(scope, key, value) VALUES('pricing', ?, ?)`, [provider, stringifyJson(models || {})]);
+    }
+    for (const [k, v] of Object.entries(payload.syncedModels || {})) {
+      db.run(`INSERT OR REPLACE INTO kv(scope, key, value) VALUES('syncedModels', ?, ?)`, [k, stringifyJson(v || {})]);
     }
   });
 
