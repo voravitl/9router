@@ -1,12 +1,32 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Regression test for the Kiro model-sync profileArn bug: ListAvailableModels
-// was called with no fallback profileArn when a connection had none stored,
-// causing AWS to return AccessDeniedException ("Your subscription does not
-// support this application"). Chat requests (claude-to-kiro.js/openai-to-kiro.js)
-// and usage lookups (usage/kiro.js) already fall back to the shared default
-// profileArn for OAuth/social auth (never for api_key, which gets a 403 on the
-// shared ARN) — the models route must apply the same resolution.
+// Regression test for the Kiro model-sync profileArn bug (revised).
+//
+// The list-models route previously injected a hardcoded shared default
+// profileArn (KIRO_DEFAULT_PROFILE_ARNS in open-sse/config/kiroConstants.js)
+// whenever a Kiro OAuth/social connection had no profileArn stored. That shared
+// ARN is NOT bound to the caller's token: AWS CodeWhisperer returns
+// AccessDeniedException ("User is not authorized to make this call") for
+// Builder-ID tokens, and the bearer-token rejection for social tokens. The
+// Verified live: ListAvailableModels strictly enforces profileArn ownership —
+// sending the shared default ARN returns 403 for Builder-ID/social tokens whose
+// bound profile differs; omitting profileArn returns 200 OK (AWS uses the token's
+// own bound profile). The chat translators (claude/openai-to-kiro.js) still inject
+// the shared default and rely on GenerateAssistantResponse tolerating it — a
+// separate, unverified risk tracked outside this fix.
+//
+// The route must therefore send ONLY a profileArn it actually has (stored on
+// the connection), and omit it (pass "") otherwise — never a hardcoded default.
+//
+// The "OMITS profileArn" / "does NOT send the hardcoded ... ARN" assertions
+// below would have FAILED before the fix (the route called
+// resolveDefaultProfileArn(authMethod) and passed the shared ARN) and PASS
+// after (the route passes storedProfileArn || "").
+
+const BUILDER_ID_DEFAULT_ARN =
+  "arn:aws:codewhisperer:us-east-1:638616132270:profile/AAAACCCCXXXX";
+const SOCIAL_DEFAULT_ARN =
+  "arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA3GRVQMUK";
 
 const mocks = vi.hoisted(() => ({
   getProviderConnectionById: vi.fn(),
@@ -42,13 +62,23 @@ vi.mock("next/server", () => ({
   },
 }));
 
-describe("Kiro models route — profileArn resolution", () => {
+async function callRoute(connectionId) {
+  const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+  const res = await GET(new Request(`http://localhost/api/providers/${connectionId}/models`), {
+    params: Promise.resolve({ id: connectionId }),
+  });
+  return { res, body: await res.json() };
+}
+
+describe("Kiro models route — profileArn resolution (omit when unset)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.listAvailableModels.mockResolvedValue([{ id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" }]);
+    mocks.listAvailableModels.mockResolvedValue([
+      { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
+    ]);
   });
 
-  it("falls back to the shared default profileArn for builder-id auth with no stored ARN", async () => {
+  it("OMITS profileArn (passes empty string) for builder-id auth with no stored ARN", async () => {
     mocks.getProviderConnectionById.mockResolvedValue({
       id: "conn-kiro-1",
       provider: "kiro",
@@ -56,21 +86,33 @@ describe("Kiro models route — profileArn resolution", () => {
       providerSpecificData: { authMethod: "builder-id" },
     });
 
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+    const { body } = await callRoute("conn-kiro-1");
 
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-1/models"), {
-      params: Promise.resolve({ id: "conn-kiro-1" }),
-    });
-    const body = await res.json();
-
-    expect(mocks.listAvailableModels).toHaveBeenCalledWith(
-      "kiro-access-token",
-      "arn:aws:codewhisperer:us-east-1:638616132270:profile/AAAACCCCXXXX",
-    );
+    // Pre-fix this was called with the hardcoded builder-id default ARN and
+    // AWS returned 403 AccessDeniedException. Post-fix it is "" so the service
+    // omits profileArn from the request body entirely.
+    expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-access-token", "");
     expect(body.models).toHaveLength(1);
   });
 
-  it("falls back to the social default profileArn for google/github auth with no stored ARN", async () => {
+  it("does NOT send the hardcoded builder-id default ARN (regression for AccessDeniedException)", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-1b",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: { authMethod: "builder-id" },
+    });
+
+    await callRoute("conn-kiro-1b");
+
+    // Explicit negative — guards against re-introducing resolveDefaultProfileArn.
+    expect(mocks.listAvailableModels).not.toHaveBeenCalledWith(
+      "kiro-access-token",
+      BUILDER_ID_DEFAULT_ARN,
+    );
+  });
+
+  it("OMITS profileArn for google social auth with no stored ARN", async () => {
     mocks.getProviderConnectionById.mockResolvedValue({
       id: "conn-kiro-2",
       provider: "kiro",
@@ -78,20 +120,60 @@ describe("Kiro models route — profileArn resolution", () => {
       providerSpecificData: { authMethod: "google" },
     });
 
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
+    await callRoute("conn-kiro-2");
 
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-2/models"), {
-      params: Promise.resolve({ id: "conn-kiro-2" }),
-    });
-    await res.json();
-
-    expect(mocks.listAvailableModels).toHaveBeenCalledWith(
-      "kiro-access-token",
-      "arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA3GRVQMUK",
-    );
+    expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-access-token", "");
   });
 
-  it("never uses the shared default profileArn for api_key auth (would 403)", async () => {
+  it("OMITS profileArn for github social auth with no stored ARN", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-2b",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: { authMethod: "github" },
+    });
+
+    await callRoute("conn-kiro-2b");
+
+    expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-access-token", "");
+  });
+
+  it("does NOT send the hardcoded social default ARN for any social auth method", async () => {
+    for (const authMethod of ["google", "github"]) {
+      vi.clearAllMocks();
+      mocks.listAvailableModels.mockResolvedValue([]);
+      mocks.getProviderConnectionById.mockResolvedValue({
+        id: `conn-social-${authMethod}`,
+        provider: "kiro",
+        accessToken: "kiro-access-token",
+        providerSpecificData: { authMethod },
+      });
+
+      await callRoute(`conn-social-${authMethod}`);
+
+      expect(mocks.listAvailableModels).not.toHaveBeenCalledWith(
+        "kiro-access-token",
+        SOCIAL_DEFAULT_ARN,
+      );
+    }
+  });
+
+  it("OMITS profileArn for IDC auth with no stored ARN", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-idc",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: { authMethod: "idc" },
+    });
+
+    await callRoute("conn-kiro-idc");
+
+    expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-access-token", "");
+  });
+
+  it("passes empty profileArn for api_key auth with no stored ARN (never the shared default)", async () => {
+    // api_key auth has always correctly avoided the shared default — this locks
+    // the invariant that api_key and OAuth now share the same resolution path.
     mocks.getProviderConnectionById.mockResolvedValue({
       id: "conn-kiro-3",
       provider: "kiro",
@@ -99,55 +181,48 @@ describe("Kiro models route — profileArn resolution", () => {
       providerSpecificData: { authMethod: "api_key" },
     });
 
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
-
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-3/models"), {
-      params: Promise.resolve({ id: "conn-kiro-3" }),
-    });
-    await res.json();
+    await callRoute("conn-kiro-3");
 
     expect(mocks.listAvailableModels).toHaveBeenCalledWith("kiro-api-key", "");
+    expect(mocks.listAvailableModels).not.toHaveBeenCalledWith(
+      "kiro-api-key",
+      BUILDER_ID_DEFAULT_ARN,
+    );
+  });
+
+  it("uses the connection's own stored profileArn when present, regardless of authMethod", async () => {
+    mocks.getProviderConnectionById.mockResolvedValue({
+      id: "conn-kiro-4",
+      provider: "kiro",
+      accessToken: "kiro-access-token",
+      providerSpecificData: {
+        authMethod: "builder-id",
+        profileArn: "arn:aws:codewhisperer:us-east-1:111111111111:profile/OWNPROFILE",
+      },
+    });
+
+    await callRoute("conn-kiro-4");
+
+    expect(mocks.listAvailableModels).toHaveBeenCalledWith(
+      "kiro-access-token",
+      "arn:aws:codewhisperer:us-east-1:111111111111:profile/OWNPROFILE",
+    );
   });
 
   it("returns an empty list + error warning when the Kiro models call fails", async () => {
     mocks.getProviderConnectionById.mockResolvedValue({
-      id: "conn-kiro-idc",
+      id: "conn-kiro-fail",
       provider: "kiro",
       accessToken: "kiro-access-token",
       providerSpecificData: { authMethod: "idc" },
     });
     mocks.listAvailableModels.mockRejectedValue(new Error("boom"));
 
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
-
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-idc/models"), {
-      params: Promise.resolve({ id: "conn-kiro-idc" }),
-    });
-    const body = await res.json();
+    const { body } = await callRoute("conn-kiro-fail");
 
     // Empty list (client keeps built-in static catalog); the actual error is surfaced.
     expect(body.models).toEqual([]);
     expect(body.warning).toBe("Failed to fetch Kiro models: boom");
-  });
-
-  it("keeps the generic warning for a non-subscription failure (still no catalog injected)", async () => {
-    mocks.getProviderConnectionById.mockResolvedValue({
-      id: "conn-kiro-neterr",
-      provider: "kiro",
-      accessToken: "kiro-access-token",
-      providerSpecificData: { authMethod: "idc" },
-    });
-    mocks.listAvailableModels.mockRejectedValue(new Error("network timeout"));
-
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
-
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-neterr/models"), {
-      params: Promise.resolve({ id: "conn-kiro-neterr" }),
-    });
-    const body = await res.json();
-
-    expect(body.models).toEqual([]);
-    expect(body.warning).toBe("Failed to fetch Kiro models: network timeout");
   });
 
   it("retries after a successful token refresh, then degrades if the retry still fails", async () => {
@@ -164,40 +239,11 @@ describe("Kiro models route — profileArn resolution", () => {
     ));
     mocks.refreshKiroToken.mockResolvedValue({ accessToken: "fresh-token", expiresIn: 3600 });
 
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
-
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-refresh/models"), {
-      params: Promise.resolve({ id: "conn-kiro-refresh" }),
-    });
-    const body = await res.json();
+    const { body } = await callRoute("conn-kiro-refresh");
 
     expect(mocks.refreshKiroToken).toHaveBeenCalled();
     expect(mocks.listAvailableModels).toHaveBeenCalledTimes(2);
     expect(body.models).toEqual([]);
     expect(body.warning).toMatch(/^Failed to fetch Kiro models:/);
-  });
-
-  it("uses the connection's own stored profileArn when present, regardless of authMethod", async () => {
-    mocks.getProviderConnectionById.mockResolvedValue({
-      id: "conn-kiro-4",
-      provider: "kiro",
-      accessToken: "kiro-access-token",
-      providerSpecificData: {
-        authMethod: "builder-id",
-        profileArn: "arn:aws:codewhisperer:us-east-1:111111111111:profile/OWNPROFILE",
-      },
-    });
-
-    const { GET } = await import("../../src/app/api/providers/[id]/models/route.js");
-
-    const res = await GET(new Request("http://localhost/api/providers/conn-kiro-4/models"), {
-      params: Promise.resolve({ id: "conn-kiro-4" }),
-    });
-    await res.json();
-
-    expect(mocks.listAvailableModels).toHaveBeenCalledWith(
-      "kiro-access-token",
-      "arn:aws:codewhisperer:us-east-1:111111111111:profile/OWNPROFILE",
-    );
   });
 });
