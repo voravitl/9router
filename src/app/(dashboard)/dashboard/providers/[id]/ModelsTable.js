@@ -154,7 +154,7 @@ export default function ModelsTable({
                     {onTest && (
                       <div className="relative shrink-0 group/btn">
                         <button
-                          onClick={onTest(model.id)}
+                          onClick={() => onTest(model.id)}
                           disabled={isTesting}
                           className={`rounded p-0.5 text-text-muted transition-opacity hover:bg-sidebar hover:text-primary ${isTesting ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"}`}
                         >
@@ -182,7 +182,7 @@ export default function ModelsTable({
                     </div>
                     {isCustom ? (
                       <button
-                        onClick={onDeleteAlias(model.id)}
+                        onClick={() => onDeleteAlias(model.id)}
                         className={`rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-500 ${onTest ? "opacity-100 sm:opacity-0 sm:group-hover:opacity-100" : "opacity-100"}`}
                         title="Remove custom model"
                       >
@@ -190,7 +190,7 @@ export default function ModelsTable({
                       </button>
                     ) : onDisable ? (
                       <button
-                        onClick={onDisable(model.id)}
+                        onClick={() => onDisable(model.id)}
                         className={`rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-500 ${onTest ? "opacity-100 sm:opacity-0 sm:group-hover:opacity-100" : "opacity-100"}`}
                         title="Disable this model"
                       >

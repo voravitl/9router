@@ -69,6 +69,7 @@ export default function ProviderDetailPage() {
   const [autoPing, setAutoPing] = useState({ enabled: false, connections: {} });
   const [suggestedModels, setSuggestedModels] = useState([]);
   const [kiloFreeModels, setKiloFreeModels] = useState([]);
+  const [dynamicModels, setDynamicModels] = useState([]);
   const [disabledModelIds, setDisabledModelIds] = useState([]);
   const [confirmState, setConfirmState] = useState(null);
   const [showAgRiskModal, setShowAgRiskModal] = useState(false);
@@ -448,6 +449,41 @@ export default function ProviderDetailPage() {
     if (!fetcher) return;
     fetchSuggestedModels(fetcher).then(setSuggestedModels);
   }, [providerId]);
+
+  // Fetch dynamic models from provider API when connections are available
+  useEffect(() => {
+    const activeConnections = connections.filter((c) => c.isActive !== false);
+    if (activeConnections.length === 0) {
+      setDynamicModels([]);
+      return;
+    }
+
+    // Only fetch for providers that support dynamic model listing
+    const supportsDynamicModels = !isCompatible && !["kilocode", "qoder"].includes(providerId);
+    if (!supportsDynamicModels) return;
+
+    // Guard against out-of-order responses / setState-after-unmount when
+    // connections/providerId change rapidly or the page unmounts mid-fetch.
+    const controller = new AbortController();
+    // Use the first active connection to fetch models
+    const firstConn = activeConnections[0];
+    fetch(`/api/providers/${firstConn.id}/models`, { cache: "no-store", signal: controller.signal })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.models && Array.isArray(data.models)) {
+          setDynamicModels(data.models);
+        } else {
+          setDynamicModels([]);
+        }
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        console.error("Error fetching dynamic models:", err);
+        setDynamicModels([]);
+      });
+
+    return () => controller.abort();
+  }, [connections, providerId, isCompatible]);
 
   const handleSetAlias = async (modelId, alias, providerAliasOverride = providerAlias) => {
     const fullModel = `${providerAliasOverride}/${modelId}`;
@@ -1081,9 +1117,11 @@ export default function ProviderDetailPage() {
     }
     // Combine hardcoded models with Kilo free models (deduplicated)
     // Exclude non-llm models (embedding, tts, etc.) — they have dedicated pages under media-providers
+    // Also merge in dynamic models fetched from the provider API
     const allModels = [
       ...models,
       ...kiloFreeModels.filter((fm) => !models.some((m) => m.id === fm.id)),
+      ...dynamicModels.filter((dm) => !models.some((m) => m.id === dm.id)),
     ].filter((m) => { const k = getModelKind(m); return !k || k === "llm"; });
     const disabledSet = new Set(disabledModelIds);
     const displayModels = allModels.filter((m) => !disabledSet.has(m.id));
