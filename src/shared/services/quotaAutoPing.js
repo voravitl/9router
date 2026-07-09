@@ -4,6 +4,7 @@ import "open-sse/index.js";
 import { getSettings, getProviderConnections, updateProviderConnection } from "@/lib/localDb";
 import { getClaudeUsage } from "open-sse/services/usage/claude.js";
 import { getCodexUsage } from "open-sse/services/usage/codex.js";
+import { computeQuotaRemainingPct } from "open-sse/services/quotaSnapshot.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { CLAUDE_CLI_SPOOF_HEADERS } from "open-sse/providers/shared.js";
 import { proxyAwareFetch } from "open-sse/utils/proxyFetch.js";
@@ -211,6 +212,22 @@ async function pingConnection(conn, provider, providerConfig, handler, deps, sta
   const usage = await handler.getUsage(connection.accessToken, proxyOptions);
   const quotas = usage?.quotas || {};
   const quota = quotas?.[providerConfig.quotaKey];
+
+  // Fire-and-forget quota snapshot persistence — must never affect ping scheduling.
+  try {
+    const quotaRemainingPct = computeQuotaRemainingPct(usage, providerConfig.quotaKey);
+    if (connection.quotaRemainingPct !== quotaRemainingPct) {
+      Promise.resolve(deps.updateProviderConnection(connection.id, {
+        quotaRemainingPct,
+        quotaCheckedAt: new Date().toISOString(),
+      })).catch((e) => {
+        console.warn(`[AutoPing] ${provider}:${connection.id}: quota snapshot persist failed: ${e.message}`);
+      });
+    }
+  } catch (e) {
+    console.warn(`[AutoPing] ${provider}:${connection.id}: quota snapshot persist failed: ${e.message}`);
+  }
+
   const resetAt = quota?.resetAt;
   if (!resetAt) return;
 
