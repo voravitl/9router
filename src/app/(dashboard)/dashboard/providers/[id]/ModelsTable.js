@@ -50,7 +50,7 @@ export default function ModelsTable({
   fullModelFor,
   emptyMessage = "No models",
 }) {
-  const [sortField, setSortField] = useState("lastSyncedAt");
+  const [sortField, setSortField] = useState("releasedAt");
   const [sortOrder, setSortOrder] = useState("desc");
 
   const toggleSort = (field) => {
@@ -58,7 +58,7 @@ export default function ModelsTable({
       setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortOrder(field === "lastSyncedAt" ? "desc" : "asc");
+      setSortOrder(field === "releasedAt" ? "desc" : "asc");
     }
   };
 
@@ -85,7 +85,7 @@ export default function ModelsTable({
           <tr>
             {headerCell("name", "Model")}
             {headerCell("context", "Context")}
-            {headerCell("lastSyncedAt", "Last synced")}
+            {headerCell("releasedAt", "Released")}
             <th className="px-4 py-2.5 text-right">Actions</th>
           </tr>
         </thead>
@@ -143,10 +143,10 @@ export default function ModelsTable({
                   {ctx ? `${Math.round(ctx / 1000)}k` : "—"}
                 </td>
                 <td className="px-4 py-2.5 text-text-muted whitespace-nowrap">
-                  {model.lastSyncedAt ? (
-                    <span title={fmtAbsolute(model.lastSyncedAt)}>{fmtRelative(model.lastSyncedAt)}</span>
+                  {model.releasedAt ? (
+                    <span title={fmtAbsolute(model.releasedAt)}>{fmtRelative(model.releasedAt)}</span>
                   ) : (
-                    <span className="text-text-muted/60">Never synced</span>
+                    <span className="text-text-muted/60">—</span>
                   )}
                 </td>
                 <td className="px-4 py-2.5">
@@ -214,6 +214,7 @@ ModelsTable.propTypes = {
     name: PropTypes.string,
     lastSyncedAt: PropTypes.string,
     firstSeenAt: PropTypes.string,
+    releasedAt: PropTypes.string,
     maxInputTokens: PropTypes.number,
     contextLength: PropTypes.number,
   })).isRequired,

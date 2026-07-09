@@ -2,16 +2,16 @@
 // tests without pulling JSX through vitest's node environment (which has no JSX
 // plugin). Re-exported from ModelsTable.js for component consumers.
 //
-// Sortable fields: "lastSyncedAt" | "name" | "context".
-// Null lastSyncedAt sorts LAST under both asc and desc.
+// Sortable fields: "releasedAt" | "name" | "context".
+// Null releasedAt sorts LAST under both asc and desc.
 // Tie-break: model.id ascending (stable).
 export function compareModels(a, b, field, order) {
   const dir = order === "asc" ? 1 : -1;
   let cmp = 0;
 
-  if (field === "lastSyncedAt") {
-    const ta = a.lastSyncedAt ? Date.parse(a.lastSyncedAt) || 0 : null;
-    const tb = b.lastSyncedAt ? Date.parse(b.lastSyncedAt) || 0 : null;
+  if (field === "releasedAt") {
+    const ta = a.releasedAt ? Date.parse(a.releasedAt) || 0 : null;
+    const tb = b.releasedAt ? Date.parse(b.releasedAt) || 0 : null;
     if (ta === null && tb === null) cmp = 0;
     else if (ta === null) return 1;   // null always last
     else if (tb === null) return -1;
