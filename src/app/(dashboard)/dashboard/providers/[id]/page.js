@@ -1144,6 +1144,18 @@ export default function ProviderDetailPage() {
       }
       return {};
     };
+    // Source provider's model creation/release date, distinct from
+    // lastSyncedAt (when WE fetched it). OpenAI-style APIs return `created`
+    // as a unix epoch in seconds; Anthropic-style APIs return `created_at`
+    // as an ISO 8601 string; providers with neither (Gemini, Copilot) have
+    // no release date to show.
+    const getReleasedAt = (m) => {
+      if (typeof m.created_at === "string" && m.created_at) return m.created_at;
+      if (typeof m.created === "number" && Number.isFinite(m.created)) {
+        return new Date(m.created * 1000).toISOString();
+      }
+      return null;
+    };
     const tableModels = [
       ...customModelRows.map((row) => {
         const synced = findSynced(row.id);
@@ -1156,6 +1168,7 @@ export default function ProviderDetailPage() {
           isCustom: true,
           lastSyncedAt: synced.lastSyncedAt || null,
           firstSeenAt: synced.firstSeenAt || null,
+          releasedAt: null,
         };
       }),
       ...displayModels.map((m) => {
@@ -1166,6 +1179,7 @@ export default function ProviderDetailPage() {
           isCustom: false,
           lastSyncedAt: synced.lastSyncedAt || m.lastSyncedAt || null,
           firstSeenAt: synced.firstSeenAt || m.firstSeenAt || null,
+          releasedAt: getReleasedAt(m),
         };
       }),
     ];
