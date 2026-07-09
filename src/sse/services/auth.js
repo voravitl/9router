@@ -170,6 +170,15 @@ export async function getProviderCredentials(provider, excludeConnectionIds = nu
 
       const result = pickByScore(selectionPool, { currentPickId });
       connection = result.connection;
+
+      // Persist lastUsedAt/consecutiveUseCount so the next call's currentPickId (and the
+      // pickByScore tie-break) reflect the actual last pick (await to ensure persistence)
+      const isSamePick = currentPickId && connection.id === currentPickId;
+      await updateProviderConnection(connection.id, {
+        lastUsedAt: new Date().toISOString(),
+        consecutiveUseCount: isSamePick ? (connection.consecutiveUseCount || 0) + 1 : 1,
+      });
+
       log.info("AUTH", `${provider} | weighted pick ${connection.id?.slice(0, 8)} | ${result.breakdown.reason}`);
     } else {
       // Default: fill-first (already sorted by priority in getProviderConnections)
