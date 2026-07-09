@@ -8,6 +8,7 @@ import { GEMINI_CONFIG } from "@/lib/oauth/constants/oauth";
 import { refreshGoogleToken, updateProviderCredentials, refreshKiroToken } from "@/sse/services/tokenRefresh";
 import { resolveOllamaLocalHost } from "open-sse/config/providers.js";
 import { refreshProviderCredentials } from "open-sse/services/oauthCredentialManager.js";
+import { resolveQoderModels } from "open-sse/services/qoderModels.js";
 
 const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 
@@ -431,6 +432,42 @@ export async function GET(request, { params }) {
       // catalog. Do NOT inject the static catalog here: this endpoint is shared with
       // basic-chat, which would then show every Kiro model twice (static prefixed id
       // + unprefixed live id that dedupe cannot collapse).
+      return buildModelsResponse({
+        provider: connection.provider,
+        connectionId: connection.id,
+        models: [],
+        warning,
+      });
+    }
+
+    // Qoder: fetch the live COSY-signed catalog — the same source chat uses
+    // for per-model model_config (open-sse/services/qoderModels.js).
+    if (connection.provider === "qoder") {
+      let warning;
+      try {
+        const catalog = await resolveQoderModels(connection, { forceRefresh: true });
+        if (catalog) {
+          if (catalog.models.length === 0) {
+            // Valid token but upstream published every model as enable:false —
+            // seen live on 0-credit / quota-exceeded accounts. Surface it
+            // instead of silently returning an empty table.
+            warning = "Qoder catalog fetched, but every model is disabled for this account (check plan/credits on qoder.com).";
+          }
+          return buildModelsResponse({
+            provider: connection.provider,
+            connectionId: connection.id,
+            models: catalog.models,
+            warning,
+          });
+        }
+        warning = "Failed to fetch Qoder models: no catalog returned (missing/expired credentials or upstream error)";
+      } catch (error) {
+        warning = `Failed to fetch Qoder models: ${error?.message || ""}`;
+        console.log("Failed to fetch Qoder models dynamically, falling back to static:", error?.message);
+      }
+
+      // Return an empty dynamic list so the client keeps using the built-in
+      // static catalog (same graceful-fallback shape as the Kiro branch above).
       return buildModelsResponse({
         provider: connection.provider,
         connectionId: connection.id,
