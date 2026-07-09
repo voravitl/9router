@@ -150,13 +150,17 @@ const PROVIDER_MODELS_CONFIG = {
     parseResponse: parseCodexModels
   },
   antigravity: {
-    url: "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:models",
+    // Google CloudCode has no `:models` endpoint (404). The real endpoint is
+    // `:fetchAvailableModels` — same as gemini-cli (GEMINI_CLI_MODELS_URL) — with
+    // the shared parseGeminiCliModels parser. antigravity is deprecated with a
+    // static registry fallback, so a failed dynamic fetch degrades quietly.
+    url: GEMINI_CLI_MODELS_URL,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     authHeader: "Authorization",
     authPrefix: "Bearer ",
     body: {},
-    parseResponse: (data) => data.models || []
+    parseResponse: parseGeminiCliModels
   },
   github: {
     url: "https://api.githubcopilot.com/models",
