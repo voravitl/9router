@@ -38,3 +38,31 @@ describe("fullModelWithSuffix", () => {
     expect(fullModelWithSuffix("glm", "glm-5.1", 200_000)).toBe("glm/glm-5.1");
   });
 });
+
+// Combined suffix behavior from the upstream v0.5.20 merge (ModelRow.js /
+// ModelsTable.js copy-string construction): a model that is BOTH a 1M-context
+// model AND has a forced thinking level must chain ours' "[1m]" context
+// suffix THEN theirs' "(level)" thinking suffix, in that order, so the copied
+// string is unambiguous about both properties at once.
+function buildCopyText(alias, modelId, contextWindow, thinkingSuffix) {
+  const baseCopyText = fullModelWithSuffix(alias, modelId, contextWindow);
+  return thinkingSuffix ? `${baseCopyText}(${thinkingSuffix})` : baseCopyText;
+}
+
+describe("combined [1m] + thinking-level copy suffix", () => {
+  it("chains [1m] then (level) when a model is both 1M-context and has a forced thinking level", () => {
+    expect(buildCopyText("glm", "glm-5.2", 1_000_000, "high")).toBe("glm/glm-5.2[1m](high)");
+  });
+
+  it("applies only [1m] when there is no forced thinking level", () => {
+    expect(buildCopyText("glm", "glm-5.2", 1_000_000, null)).toBe("glm/glm-5.2[1m]");
+  });
+
+  it("applies only (level) when the model is sub-1M context", () => {
+    expect(buildCopyText("glm", "glm-5.1", 200_000, "high")).toBe("glm/glm-5.1(high)");
+  });
+
+  it("applies neither suffix for a plain sub-1M model with no thinking level", () => {
+    expect(buildCopyText("glm", "glm-5.1", 200_000, null)).toBe("glm/glm-5.1");
+  });
+});

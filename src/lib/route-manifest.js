@@ -101,6 +101,12 @@ export const ROUTE_MANIFEST = [
     methods: ["*"],
     description: "Headroom job stop; controls child process.",
   },
+  {
+    path: "/api/headroom/proxy",
+    authType: "local-only",
+    methods: ["*"],
+    description: "Headroom dashboard proxy; forwards to local headroom process.",
+  },
 
   // --- always-jwt: require JWT or CLI token regardless of requireLogin -----
   {

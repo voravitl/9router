@@ -2,11 +2,13 @@ import PropTypes from "prop-types";
 import { CapacityBadges } from "@/shared/components";
 import { fullModelWithSuffix } from "@/shared/utils/claudeCodeModelId";
 
-export default function ModelRow({ model, fullModel, alias, copied, onCopy, getContextWindow, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting, onDisable, caps }) {
+export default function ModelRow({ model, fullModel, alias, copied, onCopy, getContextWindow, testStatus, isCustom, isFree, onDeleteAlias, onTest, isTesting, onDisable, caps, thinkingSuffix }) {
   const slash = typeof fullModel === "string" ? fullModel.indexOf("/") : -1;
-  const copyText = slash > 0
+  const baseCopyText = slash > 0
     ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow?.(fullModel))
     : fullModel;
+  const copyText = thinkingSuffix ? `${baseCopyText}(${thinkingSuffix})` : baseCopyText;
+  const displayModel = thinkingSuffix ? `${fullModel}(${thinkingSuffix})` : fullModel;
   const borderColor = testStatus === "ok"
     ? "border-green-500/40"
     : testStatus === "error"
@@ -29,7 +31,7 @@ export default function ModelRow({ model, fullModel, alias, copied, onCopy, getC
           {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <code className="max-w-[72vw] truncate rounded bg-sidebar px-1.5 py-0.5 font-mono text-xs text-text-muted sm:max-w-[360px]">{fullModel}</code>
+          <code className="max-w-[72vw] truncate rounded bg-sidebar px-1.5 py-0.5 font-mono text-xs text-text-muted sm:max-w-[360px]">{displayModel}</code>
           <span className="flex min-w-0 items-center text-[9px] gap-1 pl-1">
             {model.name && <span className="truncate text-[9px] italic text-text-muted/70">{model.name}</span>}
             <CapacityBadges caps={caps} colorOverride="text-text-muted/70" size={12} />
@@ -102,4 +104,5 @@ ModelRow.propTypes = {
   isTesting: PropTypes.bool,
   onDisable: PropTypes.func,
   caps: PropTypes.object,
+  thinkingSuffix: PropTypes.string,
 };

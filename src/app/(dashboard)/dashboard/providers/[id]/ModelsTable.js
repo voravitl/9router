@@ -106,9 +106,10 @@ export default function ModelsTable({
             const isCustom = !!isCustomMap[model.id];
             const caps = capsMap[model.id];
             const slash = typeof fullModel === "string" ? fullModel.indexOf("/") : -1;
-            const copyText = slash > 0
+            const baseCopyText = slash > 0
               ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow ? getContextWindow(fullModel) : undefined)
               : fullModel;
+            const copyText = model.thinkingSuffix ? `${baseCopyText}(${model.thinkingSuffix})` : baseCopyText;
             const borderColor = testStatus === "ok"
               ? "border-green-500/40"
               : testStatus === "error"
