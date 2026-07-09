@@ -6,6 +6,8 @@ import { getUsageForProvider } from "open-sse/services/usage.js";
 import { getExecutor } from "open-sse/executors/index.js";
 import { resolveConnectionProxyConfig } from "@/lib/network/connectionProxy";
 import { USAGE_APIKEY_PROVIDERS } from "@/shared/constants/providers";
+import { computeQuotaRemainingPct } from "open-sse/services/quotaSnapshot.js";
+import { QUOTA_AUTOPING_CONFIG } from "@/shared/constants/config";
 
 // Detect auth-expired messages returned by usage providers instead of throwing
 const AUTH_EXPIRED_PATTERNS = ["expired", "authentication", "unauthorized", "401", "re-authorize"];
@@ -169,6 +171,21 @@ export async function GET(request, { params }) {
 
     // Fetch usage from provider API
     let usage = await getUsageForProvider(connection, proxyOptions);
+
+    // Best-effort quota snapshot persistence — must never affect the response returned to the client.
+    try {
+      const quotaKey = QUOTA_AUTOPING_CONFIG.providers[connection.provider]?.quotaKey
+        || Object.keys(usage?.quotas || {})[0];
+      const quotaRemainingPct = quotaKey ? computeQuotaRemainingPct(usage, quotaKey) : null;
+      if (quotaRemainingPct !== null) {
+        await updateProviderConnection(connection.id, {
+          quotaRemainingPct,
+          quotaCheckedAt: new Date().toISOString(),
+        });
+      }
+    } catch (snapshotError) {
+      console.warn(`[Usage API] ${connection.provider}: quota snapshot persist failed: ${snapshotError.message}`);
+    }
 
     // If provider returned an auth-expired message instead of throwing,
     // force-refresh token and retry once (OAuth only)

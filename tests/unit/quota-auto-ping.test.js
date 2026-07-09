@@ -129,7 +129,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
     expect(state.resetCache["codex:codex-1"]).toBe("2026-01-01T13:00:00.000Z");
   });
 
@@ -166,7 +169,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
   });
 
   it("does not repeat Codex ping inside the minimum ping interval", async () => {
@@ -184,7 +190,34 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
+  });
+
+  it("persists the quota snapshot even when the ping itself is skipped", async () => {
+    deps.getSettings.mockResolvedValue({ codexAutoPing: { connections: { "codex-1": true } } });
+    deps.getProviderConnections.mockImplementation(async ({ provider }) => (
+      provider === "codex"
+        ? [{ id: "codex-1", provider: "codex", authType: "oauth", accessToken: "token", lastPingAt: "2026-01-01T11:55:00.000Z" }]
+        : []
+    ));
+    state.resetCache["codex:codex-1"] = "2026-01-01T17:00:00.000Z";
+    getCodexUsage.mockResolvedValue({
+      quotas: { session: { used: 1, total: 100, remaining: 99, resetAt: "2026-01-01T17:01:00.000Z" } },
+    });
+
+    await runQuotaAutoPingTick(deps, state);
+
+    expect(deps.getExecutor).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({
+        quotaRemainingPct: 99,
+        quotaCheckedAt: expect.any(String),
+      })
+    );
   });
 
   it("does not ping Codex just because reported usage is zero", async () => {
@@ -199,7 +232,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
     expect(state.resetCache["codex:codex-1"]).toBe("2026-01-01T17:00:00.000Z");
   });
 
@@ -219,7 +255,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
   });
 
   it("does not ping Codex when monthly quota is exhausted", async () => {
@@ -238,7 +277,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
   });
 
   it("does not ping Codex when session quota is exhausted", async () => {
@@ -254,7 +296,10 @@ describe("quota auto-ping", () => {
     await runQuotaAutoPingTick(deps, state);
 
     expect(deps.getExecutor).not.toHaveBeenCalled();
-    expect(deps.updateProviderConnection).not.toHaveBeenCalled();
+    expect(deps.updateProviderConnection).not.toHaveBeenCalledWith(
+      "codex-1",
+      expect.objectContaining({ lastPingedResetAt: expect.anything() })
+    );
   });
 
   it("sends one tiny gpt-5.5 Codex request through the executor", async () => {
