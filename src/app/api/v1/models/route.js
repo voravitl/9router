@@ -258,8 +258,17 @@ export async function buildModelsList(kindFilter) {
   const models = [];
 
   // Client-facing model id for Claude Code: dashify Claude family N.M → N-M.
-  // Inverse of resolveKiroModel inbound dash→dot. Non-Claude / date ids unchanged.
-  const clientModelId = (modelId) => toClaudeCodeModelId(modelId);
+  // ONLY for Kiro (kr/kiro) — inverse of resolveKiroModel dash→dot lives there.
+  // Do NOT dashify other providers (e.g. github Copilot keeps dotted registry ids).
+  const KIRO_CLIENT_DASHIFY = new Set(["kr", "kiro"]);
+  const clientModelId = (providerKey, modelId) => {
+    const key = String(providerKey || "");
+    const resolved = ALIAS_TO_ID[key] || key;
+    if (KIRO_CLIENT_DASHIFY.has(key) || KIRO_CLIENT_DASHIFY.has(resolved)) {
+      return toClaudeCodeModelId(modelId);
+    }
+    return modelId;
+  };
 
   // Combos first (filtered by kind). Web combos expose `kind` so AI knows search vs fetch.
   for (const combo of combos) {
@@ -294,7 +303,7 @@ export async function buildModelsList(kindFilter) {
         if (!kindFilter.includes(modelKind(model))) continue;
         if (isDisabled(alias, model.id)) continue;
         models.push({
-          id: `${alias}/${clientModelId(model.id)}`,
+          id: `${alias}/${clientModelId(providerId, model.id)}`,
           object: "model",
           owned_by: alias,
         });
@@ -312,7 +321,7 @@ export async function buildModelsList(kindFilter) {
       if (!modelId) continue;
 
       models.push({
-        id: `${providerAlias}/${clientModelId(modelId)}`,
+        id: `${providerAlias}/${clientModelId(providerAlias, modelId)}`,
         object: "model",
         owned_by: providerAlias,
       });
@@ -449,7 +458,8 @@ export async function buildModelsList(kindFilter) {
         if (isDisabled(outputAlias, modelId) || isDisabled(staticAlias, modelId)) continue;
 
         const model = {
-          id: `${outputAlias}/${clientModelId(modelId)}`,
+          // Scope dashify by providerId (not outputAlias) so custom prefixes on Kiro still convert.
+          id: `${outputAlias}/${clientModelId(providerId, modelId)}`,
           object: "model",
           owned_by: outputAlias,
         };
