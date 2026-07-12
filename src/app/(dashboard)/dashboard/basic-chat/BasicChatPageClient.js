@@ -149,6 +149,24 @@ function normalizeLiveModel(model, connection) {
   };
 }
 
+/** LLM combos only — request model id is the combo name (gateway resolves fallback/round-robin). */
+function normalizeComboModel(combo) {
+  if (!combo?.name) return null;
+  const kind = combo.kind || "llm";
+  if (kind !== "llm") return null;
+  const memberCount = Array.isArray(combo.models) ? combo.models.length : 0;
+  return {
+    id: `combo:${combo.name}`,
+    requestModel: combo.name,
+    name: combo.name,
+    providerId: "combo",
+    providerName: "Combos",
+    source: "combo",
+    memberCount,
+    kind,
+  };
+}
+
 function parseProviderModelsPayload(data) {
   if (Array.isArray(data?.models)) return data.models;
   if (Array.isArray(data?.data)) return data.data;
@@ -164,6 +182,68 @@ function dedupeModels(models) {
     if (!map.has(model.id)) map.set(model.id, model);
   }
   return Array.from(map.values());
+}
+
+function formatTokenPair(tokens) {
+  if (!tokens || typeof tokens !== "object") return null;
+  const prompt = tokens.prompt_tokens ?? tokens.input_tokens;
+  const completion = tokens.completion_tokens ?? tokens.output_tokens;
+  if (prompt == null && completion == null) return null;
+  return `in ${prompt ?? "—"} · out ${completion ?? "—"}`;
+}
+
+function formatRtkSavings(rtkStats) {
+  if (!rtkStats || typeof rtkStats !== "object") return null;
+  const before = rtkStats.bytesBefore;
+  const after = rtkStats.bytesAfter;
+  if (typeof before !== "number" || typeof after !== "number" || before <= 0) return null;
+  const saved = before - after;
+  const pct = Math.round((saved / before) * 100);
+  return `RTK −${saved} B (${pct}%)`;
+}
+
+function formatHeadroomSavings(headroomStats, headroomDiagnostics) {
+  if (headroomStats && typeof headroomStats.savedTokens === "number" && headroomStats.savedTokens > 0) {
+    return `Headroom −${headroomStats.savedTokens} tok`;
+  }
+  const before = headroomDiagnostics?.beforeBytes ?? headroomDiagnostics?.bytesBefore;
+  const after = headroomDiagnostics?.afterBytes ?? headroomDiagnostics?.bytesAfter;
+  if (typeof before === "number" && typeof after === "number" && before > after) {
+    return `Headroom −${before - after} B`;
+  }
+  return null;
+}
+
+/** Best-effort: latest request detail for this model after a chat turn (observability may lag flush). */
+async function fetchLatestTokenSaveMeta(requestModel, { attempts = 4, delayMs = 250 } = {}) {
+  const model = encodeURIComponent(requestModel || "");
+  if (!model) return null;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`/api/usage/request-details?model=${model}&pageSize=5&status=success`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const details = Array.isArray(data.details) ? data.details : [];
+        const match = details.find((d) => d?.model === requestModel) || details[0];
+        if (match) {
+          return {
+            tokens: match.tokens || null,
+            rtkStats: match.rtkStats || null,
+            headroomStats: match.headroomStats || null,
+            headroomDiagnostics: match.headroomDiagnostics || null,
+            detailId: match.id || null,
+          };
+        }
+      }
+    } catch {
+      // fail-open
+    }
+    if (i < attempts - 1) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  return null;
 }
 
 export default function BasicChatPageClient() {
@@ -218,16 +298,24 @@ export default function BasicChatPageClient() {
       setLoadError("");
 
       try {
-        const providersRes = await fetch("/api/providers", { cache: "no-store" });
+        const [providersRes, combosRes] = await Promise.all([
+          fetch("/api/providers", { cache: "no-store" }),
+          fetch("/api/combos", { cache: "no-store" }),
+        ]);
         const providersData = await providersRes.json().catch(() => ({}));
+        const combosData = combosRes.ok ? await combosRes.json().catch(() => ({})) : {};
         const connections = Array.isArray(providersData.connections)
           ? providersData.connections.filter((connection) => connection?.isActive !== false)
           : [];
+        const comboModels = (Array.isArray(combosData.combos) ? combosData.combos : [])
+          .map(normalizeComboModel)
+          .filter(Boolean)
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-        if (connections.length === 0) {
+        if (connections.length === 0 && comboModels.length === 0) {
           if (!cancelled) {
             setProviderGroups([]);
-            setLoadError("No providers connected yet.");
+            setLoadError("No providers or combos available yet.");
           }
           return;
         }
@@ -287,13 +375,25 @@ export default function BasicChatPageClient() {
           group.models.push(...result.models);
         }
 
-        const normalized = Array.from(providerMap.values())
+        const providerNormalized = Array.from(providerMap.values())
           .map((group) => ({
             ...group,
             models: dedupeModels(group.models).sort((a, b) => a.name.localeCompare(b.name)),
           }))
           .filter((group) => group.models.length > 0)
           .sort((a, b) => a.providerName.localeCompare(b.providerName));
+
+        const normalized = [];
+        if (comboModels.length > 0) {
+          normalized.push({
+            providerId: "combo",
+            providerName: "Combos",
+            providerType: "combo",
+            connections: [],
+            models: comboModels,
+          });
+        }
+        normalized.push(...providerNormalized);
 
         if (!cancelled) {
           setProviderGroups(normalized);
@@ -704,9 +804,17 @@ export default function BasicChatPageClient() {
         }
       }
 
+      const meta = await fetchLatestTokenSaveMeta(model.requestModel || model.id);
       updateSession(sessionId, (currentSession) => ({
         ...currentSession,
-        messages: currentSession.messages.map((message) => (message.id === assistantMessageId ? { ...message, content: assistantText || message.content, status: "done" } : message)),
+        messages: currentSession.messages.map((message) => (message.id === assistantMessageId
+          ? {
+            ...message,
+            content: assistantText || message.content,
+            status: "done",
+            meta: meta || undefined,
+          }
+          : message)),
         updatedAt: new Date().toISOString(),
       }));
       finalizeSessionTitle(sessionId, userText);
@@ -736,7 +844,11 @@ export default function BasicChatPageClient() {
   };
 
   const modelLabel = activeModel ? `${activeModel.name}` : "Select model";
-  const modelSubLabel = activeModel ? activeModel.requestModel : "Choose from connected providers";
+  const modelSubLabel = activeModel
+    ? (activeModel.source === "combo"
+      ? `combo · ${activeModel.requestModel}${activeModel.memberCount ? ` · ${activeModel.memberCount} members` : ""}`
+      : activeModel.requestModel)
+    : "Choose a combo or connected provider model";
 
   return (
     <div className="relative flex-1 flex flex-col h-full min-h-0 min-w-0 bg-[#212121] text-white overflow-hidden">
@@ -761,7 +873,7 @@ export default function BasicChatPageClient() {
               <div className="absolute left-0 top-[calc(100%+10px)] z-30 w-[min(520px,calc(100vw-2rem))] overflow-hidden rounded-[20px] border border-white/10 bg-[#262626] shadow-2xl shadow-black/50">
                 <div className="border-b border-white/10 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.22em] text-white/45">Models</p>
-                  <p className="text-sm text-white/75">Only from connected providers</p>
+                  <p className="text-sm text-white/75">Combos first, then connected providers</p>
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto p-2 custom-scrollbar">
                   {providerGroups.map((group) => (
@@ -783,7 +895,11 @@ export default function BasicChatPageClient() {
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-medium text-white">{model.name}</p>
-                                  <p className="truncate text-[11px] text-white/45">{model.requestModel}</p>
+                                  <p className="truncate text-[11px] text-white/45">
+                                    {model.source === "combo"
+                                      ? `combo · ${model.memberCount || 0} members`
+                                      : model.requestModel}
+                                  </p>
                                 </div>
                                 {isActive ? <span className="material-symbols-outlined text-[18px] text-blue-300">check_circle</span> : null}
                               </div>
@@ -866,7 +982,7 @@ export default function BasicChatPageClient() {
                   <div className="space-y-2">
                     <h2 className="text-2xl font-semibold text-white">Start a conversation</h2>
                     <p className="text-sm leading-6 text-white/60">
-                      Simple chat interface to interact with any AI model from connected providers. Select a model and start chatting!
+                      Test combos and provider models — pick a combo alias or connected model, chat, then check the reply and token-save stats under the assistant turn when available.
                     </p>
                   </div>
                 </div>
@@ -901,6 +1017,19 @@ export default function BasicChatPageClient() {
                         {content}
                         {isAssistant && isStreaming && !streamingText ? <span className="inline-block animate-pulse">▋</span> : null}
                       </div>
+
+                      {isAssistant && message.status === "done" && message.meta ? (() => {
+                        const tokenLine = formatTokenPair(message.meta.tokens);
+                        const rtkLine = formatRtkSavings(message.meta.rtkStats);
+                        const headroomLine = formatHeadroomSavings(message.meta.headroomStats, message.meta.headroomDiagnostics);
+                        const bits = [tokenLine, rtkLine, headroomLine].filter(Boolean);
+                        if (bits.length === 0) return null;
+                        return (
+                          <p className="mt-2 text-[11px] leading-5 text-white/40" title={message.meta.detailId || undefined}>
+                            {bits.join(" · ")}
+                          </p>
+                        );
+                      })() : null}
                     </div>
                   </div>
                 );

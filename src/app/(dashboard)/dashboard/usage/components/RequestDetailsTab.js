@@ -99,6 +99,28 @@ function getInputTokens(tokens) {
   return prompt < cache ? cache : prompt;
 }
 
+function formatTokenSaveCell(detail) {
+  const parts = [];
+  const rtk = detail?.rtkStats;
+  if (rtk && typeof rtk.bytesBefore === "number" && typeof rtk.bytesAfter === "number" && rtk.bytesBefore > 0) {
+    const saved = rtk.bytesBefore - rtk.bytesAfter;
+    const pct = Math.round((saved / rtk.bytesBefore) * 100);
+    parts.push(`RTK −${saved}B (${pct}%)`);
+  }
+  const hs = detail?.headroomStats;
+  if (hs && typeof hs.savedTokens === "number" && hs.savedTokens > 0) {
+    parts.push(`HR −${hs.savedTokens}tok`);
+  } else {
+    const d = detail?.headroomDiagnostics || {};
+    const before = d.beforeBytes ?? d.bytesBefore;
+    const after = d.afterBytes ?? d.bytesAfter;
+    if (typeof before === "number" && typeof after === "number" && before > after) {
+      parts.push(`HR −${before - after}B`);
+    }
+  }
+  return parts.length ? parts.join(" · ") : "—";
+}
+
 export default function RequestDetailsTab() {
   const [details, setDetails] = useState([]);
   const [pagination, setPagination] = useState({
@@ -259,6 +281,7 @@ export default function RequestDetailsTab() {
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Cached</th>
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Cache Creation</th>
                 <th className="text-right p-4 text-sm font-semibold text-text-main">Output Tokens</th>
+                <th className="text-left p-4 text-sm font-semibold text-text-main">Token save</th>
                 <th className="text-left p-4 text-sm font-semibold text-text-main">Latency</th>
                 <th className="text-center p-4 text-sm font-semibold text-text-main">Action</th>
               </tr>
@@ -266,7 +289,7 @@ export default function RequestDetailsTab() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-text-muted">
+                  <td colSpan="10" className="p-8 text-center text-text-muted">
                     <div className="flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
                       Loading...
@@ -275,7 +298,7 @@ export default function RequestDetailsTab() {
                 </tr>
               ) : details.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="p-8 text-center text-text-muted">
+                  <td colSpan="10" className="p-8 text-center text-text-muted">
                     No request details found
                   </td>
                 </tr>
@@ -307,6 +330,9 @@ export default function RequestDetailsTab() {
                     </td>
                     <td className="p-4 text-sm text-text-main text-right font-mono">
                       {detail.tokens?.completion_tokens?.toLocaleString() || 0}
+                    </td>
+                    <td className="max-w-[180px] truncate p-4 text-xs text-text-muted font-mono" title={formatTokenSaveCell(detail)}>
+                      {formatTokenSaveCell(detail)}
                     </td>
                     <td className="p-4 text-sm text-text-muted">
                       <div className="flex flex-col gap-0.5">
@@ -411,7 +437,44 @@ export default function RequestDetailsTab() {
                   {selectedDetail.tokens?.completion_tokens?.toLocaleString() || 0}
                 </span>
               </div>
+              <div className="sm:col-span-2">
+                <span className="text-text-muted">Token save (RTK/Headroom):</span>{" "}
+                <span className="text-text-main font-mono">
+                  {formatTokenSaveCell(selectedDetail)}
+                </span>
+              </div>
             </div>
+
+            {(selectedDetail.rtkStats || selectedDetail.headroomStats || selectedDetail.headroomDiagnostics) ? (
+              <CollapsibleSection title="Token save benchmark (RTK / Headroom)" defaultOpen={true} icon="savings">
+                <div className="grid min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  {selectedDetail.rtkStats ? (
+                    <div>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">RTK</p>
+                      <pre className="max-h-[200px] overflow-auto rounded-lg border border-black/5 bg-black/5 p-3 font-mono text-xs dark:border-white/5 dark:bg-white/5">
+                        {JSON.stringify(selectedDetail.rtkStats, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
+                  {selectedDetail.headroomStats ? (
+                    <div>
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Headroom stats</p>
+                      <pre className="max-h-[200px] overflow-auto rounded-lg border border-black/5 bg-black/5 p-3 font-mono text-xs dark:border-white/5 dark:bg-white/5">
+                        {JSON.stringify(selectedDetail.headroomStats, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
+                  {selectedDetail.headroomDiagnostics ? (
+                    <div className="sm:col-span-2">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-text-muted">Headroom diagnostics</p>
+                      <pre className="max-h-[200px] overflow-auto rounded-lg border border-black/5 bg-black/5 p-3 font-mono text-xs dark:border-white/5 dark:bg-white/5">
+                        {JSON.stringify(selectedDetail.headroomDiagnostics, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
+              </CollapsibleSection>
+            ) : null}
             
             <div className="space-y-4">
               <CollapsibleSection title="1. Client Request (Input)" defaultOpen={true} icon="input">
