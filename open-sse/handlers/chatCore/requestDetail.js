@@ -70,6 +70,9 @@ export function buildRequestDetail(base, overrides = {}) {
     providerResponse: base.providerResponse || null,
     response: base.response || {},
     status: base.status || "success",
+    rtkStats: base.rtkStats || null,
+    headroomStats: base.headroomStats || null,
+    headroomDiagnostics: base.headroomDiagnostics || null,
     ...overrides
   };
 }
