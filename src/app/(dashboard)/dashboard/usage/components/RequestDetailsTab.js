@@ -391,9 +391,15 @@ export default function RequestDetailsTab() {
                  <span className="text-text-main font-medium">{getProviderName(selectedDetail.provider, providerNameCache)}</span>
                </div>
               <div>
-                <span className="text-text-muted">Model:</span>{" "}
+                <span className="text-text-muted">Model (upstream):</span>{" "}
                 <span className="text-text-main font-mono">{selectedDetail.model}</span>
               </div>
+              {selectedDetail.clientModel && selectedDetail.clientModel !== selectedDetail.model ? (
+                <div>
+                  <span className="text-text-muted">Client model (combo/alias):</span>{" "}
+                  <span className="text-text-main font-mono">{selectedDetail.clientModel}</span>
+                </div>
+              ) : null}
               <div>
                 <span className="text-text-muted">Status:</span>{" "}
                 <span className={cn(

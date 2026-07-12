@@ -152,8 +152,11 @@ function normalizeLiveModel(model, connection) {
 /** LLM combos only — request model id is the combo name (gateway resolves fallback/round-robin). */
 function normalizeComboModel(combo) {
   if (!combo?.name) return null;
+  // Default / empty kind = LLM chat combo. Skip media kinds.
   const kind = combo.kind || "llm";
-  if (kind !== "llm") return null;
+  if (kind === "webSearch" || kind === "webFetch" || kind === "image" || kind === "tts" || kind === "embedding" || kind === "stt") {
+    return null;
+  }
   const memberCount = Array.isArray(combo.models) ? combo.models.length : 0;
   return {
     id: `combo:${combo.name}`,
@@ -214,18 +217,31 @@ function formatHeadroomSavings(headroomStats, headroomDiagnostics) {
   return null;
 }
 
-/** Best-effort: latest request detail for this model after a chat turn (observability may lag flush). */
-async function fetchLatestTokenSaveMeta(requestModel, { attempts = 4, delayMs = 250 } = {}) {
-  const model = encodeURIComponent(requestModel || "");
-  if (!model) return null;
+function detailMatchesRequestModel(detail, requestModel) {
+  if (!detail || !requestModel) return false;
+  return detail.clientModel === requestModel
+    || detail.request?.model === requestModel
+    || detail.model === requestModel;
+}
+
+/**
+ * Best-effort: latest request detail after a chat turn.
+ * Matches clientModel/request.model first (combo name) then upstream model.
+ * Retries past flush latency when observability is enabled.
+ */
+async function fetchLatestTokenSaveMeta(requestModel, { attempts = 8, delayMs = 200 } = {}) {
+  if (!requestModel) return null;
 
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch(`/api/usage/request-details?model=${model}&pageSize=5&status=success`, { cache: "no-store" });
+      // Prefer unfiltered recent list — after combo expansion `model` is the upstream id.
+      const res = await fetch(`/api/usage/request-details?pageSize=15&status=success`, { cache: "no-store" });
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         const details = Array.isArray(data.details) ? data.details : [];
-        const match = details.find((d) => d?.model === requestModel) || details[0];
+        const match = details.find((d) => detailMatchesRequestModel(d, requestModel))
+          || details.find((d) => d?.rtkStats || d?.headroomStats)
+          || null;
         if (match) {
           return {
             tokens: match.tokens || null,
@@ -233,6 +249,9 @@ async function fetchLatestTokenSaveMeta(requestModel, { attempts = 4, delayMs = 
             headroomStats: match.headroomStats || null,
             headroomDiagnostics: match.headroomDiagnostics || null,
             detailId: match.id || null,
+            upstreamModel: match.model || null,
+            clientModel: match.clientModel || match.request?.model || requestModel,
+            provider: match.provider || null,
           };
         }
       }
@@ -759,9 +778,12 @@ export default function BasicChatPageClient() {
       if (!reader) {
         const data = await response.json().catch(() => ({}));
         const fallbackText = textValue(data?.choices?.[0]?.message?.content || data?.output_text || data?.error || data?.message || "");
+        const meta = await fetchLatestTokenSaveMeta(model.requestModel || model.id);
         updateSession(sessionId, (currentSession) => ({
           ...currentSession,
-          messages: currentSession.messages.map((message) => (message.id === assistantMessageId ? { ...message, content: fallbackText, status: "done" } : message)),
+          messages: currentSession.messages.map((message) => (message.id === assistantMessageId
+            ? { ...message, content: fallbackText, status: "done", meta: meta || undefined }
+            : message)),
           updatedAt: new Date().toISOString(),
         }));
         return;
@@ -1022,7 +1044,10 @@ export default function BasicChatPageClient() {
                         const tokenLine = formatTokenPair(message.meta.tokens);
                         const rtkLine = formatRtkSavings(message.meta.rtkStats);
                         const headroomLine = formatHeadroomSavings(message.meta.headroomStats, message.meta.headroomDiagnostics);
-                        const bits = [tokenLine, rtkLine, headroomLine].filter(Boolean);
+                        const viaLine = message.meta.upstreamModel && message.meta.upstreamModel !== (message.meta.clientModel || activeModel?.requestModel)
+                          ? `via ${message.meta.provider || "?"} / ${message.meta.upstreamModel}`
+                          : null;
+                        const bits = [tokenLine, rtkLine, headroomLine, viaLine].filter(Boolean);
                         if (bits.length === 0) return null;
                         return (
                           <p className="mt-2 text-[11px] leading-5 text-white/40" title={message.meta.detailId || undefined}>

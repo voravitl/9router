@@ -128,9 +128,15 @@ export async function saveRequestDetail(detail) {
 
   writeBuffer.push(detail);
 
-  // Trigger immediate flush if batch threshold reached.
+  // Flush immediately when token-saver stats or final usage are present so
+  // playground/benchmark UIs can read them without waiting the batch interval.
+  const hasTokenSaveStats = Boolean(detail?.rtkStats || detail?.headroomStats || detail?.headroomDiagnostics);
+  const hasUsage = Boolean(detail?.tokens && (detail.tokens.prompt_tokens || detail.tokens.completion_tokens || detail.tokens.input_tokens || detail.tokens.output_tokens));
+  const forceFlush = hasTokenSaveStats || (detail?.status === "success" && hasUsage);
+
+  // Trigger immediate flush if batch threshold reached or forceFlush.
   // flushToDatabase() drains entire buffer in a loop, so all pushes during await are persisted.
-  if (writeBuffer.length >= config.batchSize) {
+  if (forceFlush || writeBuffer.length >= config.batchSize) {
     if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
     flushToDatabase().catch((e) => console.error("[requestDetailsRepo] flush err:", e));
   } else if (!flushTimer) {

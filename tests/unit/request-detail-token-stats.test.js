@@ -26,7 +26,7 @@ describe("request detail token-saver stats", () => {
       connectionId: "conn-1",
       latency: { ttft: 10, total: 20 },
       tokens: { prompt_tokens: 1, completion_tokens: 2 },
-      request: { model: "gpt-test", stream: false, messages: [] },
+      request: { model: "my-combo", stream: false, messages: [] },
       response: { content: "ok" },
       status: "success",
       rtkStats,
@@ -38,6 +38,9 @@ describe("request detail token-saver stats", () => {
     expect(detail.rtkStats).toEqual(rtkStats);
     expect(detail.headroomStats).toEqual(headroomStats);
     expect(detail.headroomDiagnostics).toEqual(headroomDiagnostics);
+    // clientModel preserves combo/alias from original request body
+    expect(detail.clientModel).toBe("my-combo");
+    expect(detail.model).toBe("gpt-test");
   });
 
   it("buildRequestDetail defaults token-saver fields to null", () => {
