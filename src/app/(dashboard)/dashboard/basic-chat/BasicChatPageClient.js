@@ -755,7 +755,9 @@ export default function BasicChatPageClient() {
       }));
 
     try {
-      const response = await fetch("/api/dashboard/chat/completions", {
+      // Route through the gateway OpenAI-compatible endpoint (same as CLI clients).
+      // Historical path /api/dashboard/chat/completions does not exist in this app (404).
+      const response = await fetch("/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -767,6 +769,7 @@ export default function BasicChatPageClient() {
           stream: true,
         }),
         signal: abortRef.current.signal,
+        credentials: "include",
       });
 
       if (!response.ok) {

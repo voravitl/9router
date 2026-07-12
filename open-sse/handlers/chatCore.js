@@ -41,6 +41,8 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   let rtkStats = null;
   let headroomStats = null;
   const headroomDiagnostics = {};
+  // Prefer original client model (combo/alias) from the inbound request before routing rewrites body.model
+  const clientModel = clientRawRequest?.body?.model || body?.model || null;
 
   const { provider, model } = modelInfo;
 
@@ -252,7 +254,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     trackPendingRequest(model, provider, connectionId, false, true);
     appendRequestLog({ model, provider, connectionId, status: `FAILED ${error.name === "AbortError" ? 499 : HTTP_STATUS.BAD_GATEWAY}` }).catch(() => { });
     saveRequestDetail(buildRequestDetail({
-      provider, model, connectionId,
+      provider, model, connectionId, clientModel,
       latency: { ttft: 0, total: Date.now() - requestStartTime },
       tokens: { prompt_tokens: 0, completion_tokens: 0 },
       request: extractRequestConfig(body, stream),
@@ -301,7 +303,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     const { statusCode, message, resetsAtMs } = await parseUpstreamError(providerResponse, executor);
     appendRequestLog({ model, provider, connectionId, status: `FAILED ${statusCode}` }).catch(() => { });
     saveRequestDetail(buildRequestDetail({
-      provider, model, connectionId,
+      provider, model, connectionId, clientModel,
       latency: { ttft: 0, total: Date.now() - requestStartTime },
       tokens: { prompt_tokens: 0, completion_tokens: 0 },
       request: extractRequestConfig(body, stream),
@@ -321,7 +323,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   const sharedCtx = {
     provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess,
-    rtkStats, headroomStats, headroomDiagnostics, detailId,
+    rtkStats, headroomStats, headroomDiagnostics, detailId, clientModel,
   };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => { });
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);
