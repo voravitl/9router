@@ -13,7 +13,37 @@ env:
   DOCKERHUB_IMAGE: voravitl/888router
 
 jobs:
+  # Test gate: do not publish an image if unit smoke fails.
+  # (Same smoke set as .github/workflows/ci.yml — keep in sync.)
+  test:
+    name: unit-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # Repo does not commit package-lock.json — skip npm cache/lock-based ci.
+
+      - name: Install root dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install test dependencies
+        working-directory: tests
+        run: npm install --no-audit --no-fund
+
+      - name: Run unit smoke tests
+        working-directory: tests
+        run: |
+          npx vitest run \
+            unit/request-detail-token-stats.test.js \
+            unit/capabilities.test.js \
+            unit/dashboard-guard.test.js
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

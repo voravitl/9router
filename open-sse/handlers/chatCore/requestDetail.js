@@ -58,9 +58,17 @@ export function extractUsageFromResponse(responseBody) {
 }
 
 export function buildRequestDetail(base, overrides = {}) {
+  // Client-facing model id (combo/alias) from the original body when present —
+  // distinct from `model` which is the upstream provider model after combo expansion.
+  const clientModel = base.clientModel
+    || base.request?.model
+    || overrides.clientModel
+    || null;
+
   return {
     provider: base.provider || "unknown",
     model: base.model || "unknown",
+    clientModel,
     connectionId: base.connectionId || undefined,
     timestamp: new Date().toISOString(),
     latency: base.latency || { ttft: 0, total: 0 },
@@ -70,6 +78,9 @@ export function buildRequestDetail(base, overrides = {}) {
     providerResponse: base.providerResponse || null,
     response: base.response || {},
     status: base.status || "success",
+    rtkStats: base.rtkStats || null,
+    headroomStats: base.headroomStats || null,
+    headroomDiagnostics: base.headroomDiagnostics || null,
     ...overrides
   };
 }
