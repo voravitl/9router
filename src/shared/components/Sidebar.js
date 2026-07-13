@@ -25,7 +25,8 @@ const navItems = [
   { href: "/dashboard/basic-chat", label: "Test Chat", icon: "chat" },
   { href: "/dashboard/usage", label: "Usage", icon: "bar_chart" },
   { href: "/dashboard/quota", label: "Quota Tracker", icon: "data_usage" },
-  { href: "/dashboard/token-saver", label: "Token Saver", icon: "savings" },
+  // Savings report + toggles (RTK / Headroom / Caveman / Ponytail) — before/after aggregate
+  { href: "/dashboard/token-saver", label: "Token Savings", icon: "savings" },
   { href: "/dashboard/cli-tools", label: "CLI Tools", icon: "terminal" },
 ];
 

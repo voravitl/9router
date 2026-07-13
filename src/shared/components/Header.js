@@ -114,8 +114,8 @@ const getPageInfo = (pathname) => {
     };
   if (pathname.includes("/token-saver"))
     return {
-      title: "Token Saver",
-      description: "Compress prompts and outputs to save tokens",
+      title: "Token Savings",
+      description: "Before/after savings report + RTK, Headroom, Caveman, Ponytail controls",
       icon: "savings",
       breadcrumbs: [],
     };

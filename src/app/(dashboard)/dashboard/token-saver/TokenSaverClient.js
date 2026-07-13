@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Card, Button, Input, Modal, Toggle } from "@/shared/components";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { getCurrentLocale, onLocaleChange } from "@/i18n/runtime";
@@ -9,6 +10,19 @@ import {
   CAVEMAN_LEVELS,
   PONYTAIL_LEVELS,
 } from "../endpoint/endpointConstants";
+
+function fmtBytes(n) {
+  if (n == null || Number.isNaN(n)) return "—";
+  const v = Math.abs(Number(n));
+  if (v < 1024) return `${Math.round(n)} B`;
+  if (v < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function fmtNum(n) {
+  if (n == null || Number.isNaN(n)) return "—";
+  return Number(n).toLocaleString();
+}
 
 export default function TokenSaverClient() {
   const [rtkEnabled, setRtkEnabledState] = useState(true);
@@ -29,6 +43,10 @@ export default function TokenSaverClient() {
   const [ponytailEnabled, setPonytailEnabled] = useState(false);
   const [ponytailLevel, setPonytailLevel] = useState("full");
   const [locale, setLocale] = useState("en");
+  const [summaryPeriod, setSummaryPeriod] = useState("7d");
+  const [summary, setSummary] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState("");
 
   const { copied, copy } = useCopyToClipboard();
 
@@ -152,6 +170,24 @@ export default function TokenSaverClient() {
     patchSetting({ ponytailLevel: level });
   };
 
+  const loadSummary = useCallback(async (period = summaryPeriod) => {
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      const res = await fetch(`/api/usage/token-save-summary?period=${period}`, {
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to load summary");
+      setSummary(data);
+    } catch (e) {
+      setSummaryError(e.message || "Failed to load summary");
+      setSummary(null);
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [summaryPeriod]);
+
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -172,6 +208,10 @@ export default function TokenSaverClient() {
     loadSettings();
   }, [refreshHeadroomStatus]);
 
+  useEffect(() => {
+    loadSummary(summaryPeriod);
+  }, [summaryPeriod, loadSummary]);
+
   const headroomRunning = !!headroomStatus.running;
   const headroomLocalUrl = headroomStatus.localUrl !== false;
   // External Docker sidecar (e.g. http://headroom:8787) — not managed by this process.
@@ -189,15 +229,171 @@ export default function TokenSaverClient() {
   const headroomManaged =
     headroomLocalUrl && !!headroomStatus.managedPid;
 
+  const rtk = summary?.rtk;
+  const hr = summary?.headroom;
+
   return (
     <div className="space-y-6 p-6">
+      {/* Aggregated before/after savings — primary reason this page is in the sidebar */}
+      <Card id="savings-report">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">monitoring</span>
+              Savings report
+            </h2>
+            <p className="text-sm text-text-muted mt-1">
+              After RTK / Headroom pipeline — combined before → after from real requests
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {["24h", "7d", "30d"].map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setSummaryPeriod(p)}
+                className={`px-3 py-1.5 rounded text-xs font-medium border transition-colors ${
+                  summaryPeriod === p
+                    ? "bg-primary text-white border-primary"
+                    : "bg-transparent border-border text-text-muted hover:bg-surface-2"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <Button size="sm" variant="ghost" icon="refresh" onClick={() => loadSummary(summaryPeriod)} disabled={summaryLoading}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {summaryError ? (
+          <p className="text-sm text-warning mb-3">{summaryError}</p>
+        ) : null}
+
+        {summaryLoading && !summary ? (
+          <p className="text-sm text-text-muted">Loading savings…</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <div className="rounded-xl border border-border bg-surface-2/40 p-4">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Scanned</p>
+                <p className="text-2xl font-semibold mt-1">{fmtNum(summary?.period?.scanned)}</p>
+                <p className="text-xs text-text-muted mt-1">
+                  requests in {summary?.periodLabel || summaryPeriod}
+                  {summary?.period?.truncated ? " (capped)" : ""}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface-2/40 p-4">
+                <p className="text-xs uppercase tracking-wide text-text-muted">RTK before → after</p>
+                <p className="text-lg font-semibold mt-1 font-mono">
+                  {fmtBytes(rtk?.bytesBefore)} → {fmtBytes(rtk?.bytesAfter)}
+                </p>
+                <p className="text-sm text-success mt-1">
+                  −{fmtBytes(rtk?.bytesSaved)} ({rtk?.pctSaved ?? 0}%)
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  {fmtNum(rtk?.requestsWithSavings)} / {fmtNum(rtk?.requestsWithStats)} requests saved
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface-2/40 p-4">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Headroom</p>
+                <p className="text-2xl font-semibold mt-1">
+                  −{fmtNum(hr?.tokensSaved)} <span className="text-sm font-normal text-text-muted">tok</span>
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  {hr?.bytesSaved > 0 ? `also −${fmtBytes(hr.bytesSaved)} body` : "tokens reported by proxy"}
+                </p>
+                <p className="text-xs text-text-muted mt-1">
+                  {fmtNum(hr?.requestsWithSavings)} requests with savings
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-surface-2/40 p-4">
+                <p className="text-xs uppercase tracking-wide text-text-muted">Caveman / Ponytail</p>
+                <p className="text-sm mt-2 text-text-muted leading-5">
+                  Prompt-only — no before/after meter. They shorten model output / code style, not measured in this report.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">Top RTK filters</p>
+                {rtk?.topFilters?.length ? (
+                  <ul className="space-y-1.5">
+                    {rtk.topFilters.map((f) => (
+                      <li key={f.name} className="flex justify-between text-sm border-b border-border/60 pb-1">
+                        <span className="font-mono">{f.name}</span>
+                        <span className="text-text-muted">{fmtNum(f.count)} hits</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-text-muted">No RTK hits in this window.</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">Recent savings</p>
+                {summary?.recent?.length ? (
+                  <ul className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                    {summary.recent.map((row, idx) => (
+                      <li key={row.id || idx} className="text-xs border-b border-border/60 pb-1.5">
+                        <div className="flex justify-between gap-2">
+                          <span className="font-mono truncate">{row.model || "—"}</span>
+                          <span className="text-success shrink-0">
+                            {row.rtkBytesSaved > 0 ? `RTK −${fmtBytes(row.rtkBytesSaved)}` : ""}
+                            {row.rtkBytesSaved > 0 && (row.headroomTokensSaved > 0 || row.headroomBytesSaved > 0) ? " · " : ""}
+                            {row.headroomTokensSaved > 0 ? `HR −${fmtNum(row.headroomTokensSaved)}tok` : ""}
+                            {row.headroomTokensSaved <= 0 && row.headroomBytesSaved > 0 ? `HR −${fmtBytes(row.headroomBytesSaved)}` : ""}
+                          </span>
+                        </div>
+                        <p className="text-text-muted mt-0.5">
+                          {row.timestamp ? new Date(row.timestamp).toLocaleString() : ""}
+                          {row.provider ? ` · ${row.provider}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-text-muted">
+                    No measured savings yet. Send agent traffic with tools (RTK) or enable Headroom, then refresh.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {hr?.topSkipReasons?.length ? (
+              <div className="mb-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-1">Headroom skip / errors</p>
+                <ul className="text-xs text-warning space-y-1">
+                  {hr.topSkipReasons.map((r) => (
+                    <li key={r.reason} className="font-mono break-all">
+                      {r.count}× {r.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3 text-sm">
+              <Link href="/dashboard/usage" className="text-primary underline hover:opacity-80">
+                Open Usage → Request Details (per-request benchmark)
+              </Link>
+              <Link href="/dashboard/basic-chat" className="text-primary underline hover:opacity-80">
+                Test Chat (meta under replies)
+              </Link>
+            </div>
+          </>
+        )}
+      </Card>
+
       <Card id="rtk">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">
               bolt
             </span>
-            Token Saver
+            Controls
           </h2>
         </div>
         <div className="flex items-center justify-between pt-2 pb-4 border-b border-border gap-4">

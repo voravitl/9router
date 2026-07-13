@@ -64,7 +64,7 @@ export {
 
 // Request details
 export {
-  saveRequestDetail, getRequestDetails, getRequestDetailById,
+  saveRequestDetail, getRequestDetails, getRequestDetailById, getTokenSaveSummary,
 } from "./repos/requestDetailsRepo.js";
 
 // Synced models (lastSyncedAt / firstSeenAt per connection+model)

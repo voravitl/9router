@@ -1,3 +1,8 @@
+# v0.10.7 (2026-07-13)
+
+## Features
+- **Token Savings menu**: sidebar label + page shows aggregated before→after report (RTK bytes, Headroom tokens, period 24h/7d/30d, recent rows) via `/api/usage/token-save-summary` — voravitl
+
 # v0.10.6 (2026-07-13)
 
 ## Fixes

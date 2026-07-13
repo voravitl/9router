@@ -192,6 +192,161 @@ export async function getRequestDetailById(id) {
   return row ? parseJson(row.data, null) : null;
 }
 
+/**
+ * Aggregate RTK + Headroom savings across request details in a time window.
+ * Caveman/Ponytail are prompt-only and not metered here.
+ */
+export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } = {}) {
+  const db = await getAdapter();
+  const conds = [];
+  const params = [];
+  if (startDate) {
+    conds.push("timestamp >= ?");
+    params.push(new Date(startDate).toISOString());
+  }
+  if (endDate) {
+    conds.push("timestamp <= ?");
+    params.push(new Date(endDate).toISOString());
+  }
+  const where = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
+  const safeLimit = Math.min(Math.max(Number(limit) || 2000, 1), 5000);
+
+  const cntRow = db.get(`SELECT COUNT(*) as c FROM requestDetails ${where}`, params);
+  const totalInWindow = cntRow ? cntRow.c : 0;
+
+  const rows = db.all(
+    `SELECT data FROM requestDetails ${where} ORDER BY timestamp DESC LIMIT ?`,
+    [...params, safeLimit],
+  );
+
+  const rtk = {
+    requestsWithStats: 0,
+    requestsWithSavings: 0,
+    bytesBefore: 0,
+    bytesAfter: 0,
+    bytesSaved: 0,
+    filterHits: {},
+  };
+  const headroom = {
+    requestsWithStats: 0,
+    requestsWithSavings: 0,
+    tokensSaved: 0,
+    bytesBefore: 0,
+    bytesAfter: 0,
+    bytesSaved: 0,
+    skipReasons: {},
+  };
+  const recent = [];
+
+  for (const row of rows) {
+    const detail = parseJson(row.data, {});
+    const rtkStats = detail?.rtkStats;
+    const hs = detail?.headroomStats;
+    const diag = detail?.headroomDiagnostics || {};
+
+    let rtkSaved = 0;
+    let rtkPct = 0;
+    if (rtkStats && typeof rtkStats.bytesBefore === "number" && typeof rtkStats.bytesAfter === "number") {
+      rtk.requestsWithStats += 1;
+      rtk.bytesBefore += rtkStats.bytesBefore;
+      rtk.bytesAfter += rtkStats.bytesAfter;
+      rtkSaved = Math.max(0, rtkStats.bytesBefore - rtkStats.bytesAfter);
+      if (rtkSaved > 0) {
+        rtk.requestsWithSavings += 1;
+        rtk.bytesSaved += rtkSaved;
+      }
+      if (rtkStats.bytesBefore > 0) {
+        rtkPct = Math.round((rtkSaved / rtkStats.bytesBefore) * 100);
+      }
+      if (Array.isArray(rtkStats.hits)) {
+        for (const hit of rtkStats.hits) {
+          const key = hit?.filter || hit?.shape || "other";
+          rtk.filterHits[key] = (rtk.filterHits[key] || 0) + 1;
+        }
+      }
+    }
+
+    let hrTokens = 0;
+    let hrBytesSaved = 0;
+    if (hs && typeof hs.savedTokens === "number" && hs.savedTokens > 0) {
+      headroom.requestsWithStats += 1;
+      headroom.requestsWithSavings += 1;
+      headroom.tokensSaved += hs.savedTokens;
+      hrTokens = hs.savedTokens;
+    } else if (diag && (diag.beforeBytes != null || diag.bytesBefore != null)) {
+      headroom.requestsWithStats += 1;
+      const before = diag.beforeBytes ?? diag.bytesBefore ?? 0;
+      const after = diag.afterBytes ?? diag.bytesAfter ?? 0;
+      headroom.bytesBefore += before;
+      headroom.bytesAfter += after;
+      hrBytesSaved = Math.max(0, before - after);
+      if (hrBytesSaved > 0) {
+        headroom.requestsWithSavings += 1;
+        headroom.bytesSaved += hrBytesSaved;
+      }
+      if (diag.reason) {
+        const reason = String(diag.reason).slice(0, 80);
+        headroom.skipReasons[reason] = (headroom.skipReasons[reason] || 0) + 1;
+      }
+    } else if (diag?.reason) {
+      const reason = String(diag.reason).slice(0, 80);
+      headroom.skipReasons[reason] = (headroom.skipReasons[reason] || 0) + 1;
+    }
+
+    if ((rtkSaved > 0 || hrTokens > 0 || hrBytesSaved > 0) && recent.length < 12) {
+      recent.push({
+        id: detail.id || null,
+        timestamp: detail.timestamp || null,
+        model: detail.clientModel || detail.model || null,
+        provider: detail.provider || null,
+        rtkBytesSaved: rtkSaved || 0,
+        rtkPct,
+        headroomTokensSaved: hrTokens || 0,
+        headroomBytesSaved: hrBytesSaved || 0,
+      });
+    }
+  }
+
+  const topFilters = Object.entries(rtk.filterHits)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({ name, count }));
+
+  const topSkipReasons = Object.entries(headroom.skipReasons)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([reason, count]) => ({ reason, count }));
+
+  return {
+    period: {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      scanned: rows.length,
+      totalInWindow,
+      truncated: totalInWindow > rows.length,
+    },
+    rtk: {
+      ...rtk,
+      pctSaved: rtk.bytesBefore > 0 ? Math.round((rtk.bytesSaved / rtk.bytesBefore) * 100) : 0,
+      topFilters,
+    },
+    headroom: {
+      ...headroom,
+      pctBytesSaved: headroom.bytesBefore > 0
+        ? Math.round((headroom.bytesSaved / headroom.bytesBefore) * 100)
+        : 0,
+      topSkipReasons,
+    },
+    recent,
+    notes: {
+      rtk: "Measures tool_result compression in bytes (before → after).",
+      headroom: "Measures context compress when proxy succeeds (tokens or bytes).",
+      caveman: "Prompt-only: no per-request before/after meter.",
+      ponytail: "Prompt-only: no per-request before/after meter.",
+    },
+  };
+}
+
 const _shutdownHandler = async () => {
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   if (writeBuffer.length > 0) await flushToDatabase();
