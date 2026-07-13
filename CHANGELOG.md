@@ -1,3 +1,8 @@
+# v0.10.11 (2026-07-13)
+
+## Fixes
+- **Token Savings**: Headroom section shows **LIVE reachable** vs historical log; explain why 24h period still lists this morning’s timeouts and when they drop off — voravitl
+
 # v0.10.10 (2026-07-13)
 
 ## Fixes

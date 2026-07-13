@@ -485,42 +485,76 @@ export default function TokenSaverClient() {
               </div>
             </div>
 
-            {(hr?.topSkipReasonsRecent24h?.length || hr?.topSkipReasons?.length) ? (
+            {(hr?.topSkipReasonsRecent24h?.length || hr?.topSkipReasons?.length || headroomRunning) ? (
               <div className="mb-3 rounded-xl border border-border p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-1">
-                  Headroom skip / errors
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-2">
+                  Headroom status
                 </p>
-                <p className="text-[11px] text-text-muted mb-2 leading-4">
-                  These are <strong>historical counters in the selected period</strong> (not live health).
-                  After fixing Docker URL, old timeouts stay until they age out of 7d/30d.
-                  {hr?.skipNewestAt ? (
-                    <> Newest logged: {new Date(hr.skipNewestAt).toLocaleString()}.</>
-                  ) : null}
-                </p>
-                <p className="text-[11px] font-semibold text-text-muted mb-1">Last 24 hours</p>
-                {hr?.topSkipReasonsRecent24h?.length ? (
-                  <ul className="text-xs text-warning space-y-1 mb-3">
-                    {hr.topSkipReasonsRecent24h.map((r) => (
-                      <li key={`r24-${r.reason}`} className="font-mono break-all">
-                        {r.count}× {r.reason}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-success mb-3">No Headroom errors in the last 24 hours.</p>
-                )}
-                <details className="text-xs">
-                  <summary className="cursor-pointer text-text-muted hover:text-text-main">
-                    Full period ({summary?.periodLabel || summaryPeriod}) — includes older failures
-                  </summary>
-                  <ul className="mt-2 space-y-1 text-warning/90">
-                    {(hr.topSkipReasons || []).map((r) => (
-                      <li key={`full-${r.reason}`} className="font-mono break-all">
-                        {r.count}× {r.reason}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
+                {/* Live health vs historical log — keep these separate */}
+                <div
+                  className={`mb-3 rounded-lg px-3 py-2 text-sm ${
+                    headroomRunning
+                      ? "bg-success/10 text-success border border-success/20"
+                      : "bg-warning/10 text-warning border border-warning/20"
+                  }`}
+                >
+                  {headroomRunning ? (
+                    <>
+                      <strong>LIVE: reachable</strong>
+                      {headroomStatus.url ? (
+                        <span className="text-text-muted"> · {headroomStatus.url}</span>
+                      ) : null}
+                      {hr?.skipNewestAt ? (
+                        <p className="text-[11px] mt-1 text-text-muted leading-4">
+                          Last logged failure: {new Date(hr.skipNewestAt).toLocaleString()}
+                          {" · "}
+                          no new failures after that (counters below are old log rows still inside the time window).
+                        </p>
+                      ) : (
+                        <p className="text-[11px] mt-1 text-text-muted">No Headroom failures in this period.</p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <strong>LIVE: not reachable</strong>
+                      <p className="text-[11px] mt-1">Check proxy URL / container. Chat still works (fail-open).</p>
+                    </>
+                  )}
+                </div>
+
+                {(hr?.topSkipReasons?.length > 0) ? (
+                  <>
+                    <p className="text-[11px] text-text-muted mb-2 leading-4">
+                      <strong>Why you still see numbers when period = 24h:</strong> those requests
+                      really did fail earlier today (before the Docker URL fix). Selecting 24h does
+                      <em> not</em> mean “only right now” — it means “all requests in the last 24 hours”.
+                      {hr?.skipNewestAt ? (
+                        <>
+                          {" "}
+                          This list should clear around{" "}
+                          <strong>
+                            {new Date(new Date(hr.skipNewestAt).getTime() + 24 * 60 * 60 * 1000).toLocaleString()}
+                          </strong>
+                          {" "}(24h after the newest failure), if nothing new fails.
+                        </>
+                      ) : null}
+                    </p>
+                    <details className="text-xs" open={false}>
+                      <summary className="cursor-pointer text-text-muted hover:text-text-main">
+                        Historical log in selected period ({summary?.periodLabel || summaryPeriod})
+                        {" — "}
+                        {(hr.topSkipReasons || []).reduce((s, r) => s + (r.count || 0), 0)} entries (click to expand)
+                      </summary>
+                      <ul className="mt-2 space-y-1 text-warning/90">
+                        {(hr.topSkipReasons || []).map((r) => (
+                          <li key={`full-${r.reason}`} className="font-mono break-all">
+                            {r.count}× {r.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  </>
+                ) : null}
               </div>
             ) : null}
 
