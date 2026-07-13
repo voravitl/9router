@@ -485,16 +485,42 @@ export default function TokenSaverClient() {
               </div>
             </div>
 
-            {hr?.topSkipReasons?.length ? (
-              <div className="mb-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-1">Headroom skip / errors</p>
-                <ul className="text-xs text-warning space-y-1">
-                  {hr.topSkipReasons.map((r) => (
-                    <li key={r.reason} className="font-mono break-all">
-                      {r.count}× {r.reason}
-                    </li>
-                  ))}
-                </ul>
+            {(hr?.topSkipReasonsRecent24h?.length || hr?.topSkipReasons?.length) ? (
+              <div className="mb-3 rounded-xl border border-border p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-1">
+                  Headroom skip / errors
+                </p>
+                <p className="text-[11px] text-text-muted mb-2 leading-4">
+                  These are <strong>historical counters in the selected period</strong> (not live health).
+                  After fixing Docker URL, old timeouts stay until they age out of 7d/30d.
+                  {hr?.skipNewestAt ? (
+                    <> Newest logged: {new Date(hr.skipNewestAt).toLocaleString()}.</>
+                  ) : null}
+                </p>
+                <p className="text-[11px] font-semibold text-text-muted mb-1">Last 24 hours</p>
+                {hr?.topSkipReasonsRecent24h?.length ? (
+                  <ul className="text-xs text-warning space-y-1 mb-3">
+                    {hr.topSkipReasonsRecent24h.map((r) => (
+                      <li key={`r24-${r.reason}`} className="font-mono break-all">
+                        {r.count}× {r.reason}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-success mb-3">No Headroom errors in the last 24 hours.</p>
+                )}
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-text-muted hover:text-text-main">
+                    Full period ({summary?.periodLabel || summaryPeriod}) — includes older failures
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-warning/90">
+                    {(hr.topSkipReasons || []).map((r) => (
+                      <li key={`full-${r.reason}`} className="font-mono break-all">
+                        {r.count}× {r.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               </div>
             ) : null}
 

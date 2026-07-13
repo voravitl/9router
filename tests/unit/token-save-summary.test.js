@@ -63,5 +63,6 @@ describe("getTokenSaveSummary", () => {
     expect(summary.notes.caveman).toMatch(/Prompt-only/);
     expect(Array.isArray(summary.series)).toBe(true);
     expect(summary.series.some((d) => d.date === "2026-07-13" && d.saved > 0)).toBe(true);
+    expect(Array.isArray(summary.headroom.topSkipReasonsRecent24h)).toBe(true);
   });
 });

@@ -1,3 +1,8 @@
+# v0.10.10 (2026-07-13)
+
+## Fixes
+- **Token Savings**: Headroom skip list split into **last 24h** vs full period so old Docker timeouts are not mistaken for live failures — voravitl
+
 # v0.10.9 (2026-07-13)
 
 ## Fixes

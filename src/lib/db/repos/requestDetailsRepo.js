@@ -235,10 +235,27 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
     bytesAfter: 0,
     bytesSaved: 0,
     skipReasons: {},
+    /** @type {Record<string, number>} */
+    skipReasonsRecent24h: {},
+    skipNewestAt: null,
   };
   const recent = [];
   /** @type {Record<string, { date: string, before: number, after: number, saved: number, requests: number }>} */
   const byDay = {};
+  const recent24hCutoff = Date.now() - 24 * 60 * 60 * 1000;
+
+  function noteSkipReason(reason, timestamp) {
+    const key = String(reason).slice(0, 120);
+    headroom.skipReasons[key] = (headroom.skipReasons[key] || 0) + 1;
+    const ts = timestamp ? new Date(timestamp).getTime() : NaN;
+    if (Number.isFinite(ts) && ts >= recent24hCutoff) {
+      headroom.skipReasonsRecent24h[key] = (headroom.skipReasonsRecent24h[key] || 0) + 1;
+    }
+    if (Number.isFinite(ts)) {
+      const prev = headroom.skipNewestAt ? new Date(headroom.skipNewestAt).getTime() : 0;
+      if (ts >= prev) headroom.skipNewestAt = new Date(ts).toISOString();
+    }
+  }
 
   for (const row of rows) {
     const detail = parseJson(row.data, {});
@@ -294,13 +311,9 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
         headroom.requestsWithSavings += 1;
         headroom.bytesSaved += hrBytesSaved;
       }
-      if (diag.reason) {
-        const reason = String(diag.reason).slice(0, 80);
-        headroom.skipReasons[reason] = (headroom.skipReasons[reason] || 0) + 1;
-      }
+      if (diag.reason) noteSkipReason(diag.reason, detail.timestamp);
     } else if (diag?.reason) {
-      const reason = String(diag.reason).slice(0, 80);
-      headroom.skipReasons[reason] = (headroom.skipReasons[reason] || 0) + 1;
+      noteSkipReason(diag.reason, detail.timestamp);
     }
 
     if ((rtkSaved > 0 || hrTokens > 0 || hrBytesSaved > 0) && recent.length < 12) {
@@ -324,7 +337,11 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
 
   const topSkipReasons = Object.entries(headroom.skipReasons)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+    .slice(0, 8)
+    .map(([reason, count]) => ({ reason, count }));
+  const topSkipReasonsRecent24h = Object.entries(headroom.skipReasonsRecent24h)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
     .map(([reason, count]) => ({ reason, count }));
 
   // Oldest → newest for charts (unknown last)
@@ -351,6 +368,7 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
         ? Math.round((headroom.bytesSaved / headroom.bytesBefore) * 100)
         : 0,
       topSkipReasons,
+      topSkipReasonsRecent24h,
     },
     // Chart-friendly series: daily RTK tool-blob bytes (not full bill)
     series,
