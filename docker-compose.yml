@@ -24,6 +24,14 @@ services:
     restart: always
     ports:
       - "8787:8787"
+    # Image default checks /readyz (includes upstream) with a 5s timeout — flaps
+    # unhealthy when Anthropic is slow. Liveness is enough for "is the proxy up".
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8787/livez"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
 volumes:
   888router-data:

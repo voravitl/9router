@@ -8,10 +8,16 @@ vi.mock("child_process", () => ({
   execSync: mocks.execSync,
 }));
 
-import { getHeadroomStatus, isLoopbackHeadroomUrl } from "../../src/lib/headroom/detect.js";
+import {
+  getHeadroomStatus,
+  isLoopbackHeadroomUrl,
+  probeProxyRunning,
+  __resetDetectCache,
+} from "../../src/lib/headroom/detect.js";
 
 afterEach(() => {
   vi.clearAllMocks();
+  __resetDetectCache();
 });
 
 describe("headroom detect", () => {
@@ -24,7 +30,26 @@ describe("headroom detect", () => {
     expect(status.running).toBe(true);
     expect(status.localUrl).toBe(false);
     expect(status.canStart).toBe(false);
-    expect(global.fetch).toHaveBeenCalledWith("http://headroom:8787/health", expect.any(Object));
+    // Prefer lightweight liveness over /health (upstream-aware, can hang).
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://headroom:8787/livez",
+      expect.any(Object),
+    );
+  });
+
+  it("falls back through livez → healthz → health", async () => {
+    global.fetch = vi.fn(async (url) => {
+      if (String(url).endsWith("/livez")) throw new Error("no livez");
+      if (String(url).endsWith("/healthz")) throw new Error("no healthz");
+      return new Response("ok", { status: 200 });
+    });
+
+    await expect(probeProxyRunning("http://headroom:8787")).resolves.toBe(true);
+    expect(global.fetch.mock.calls.map((c) => c[0])).toEqual([
+      "http://headroom:8787/livez",
+      "http://headroom:8787/healthz",
+      "http://headroom:8787/health",
+    ]);
   });
 
   it("recognizes loopback URLs for managed local mode", () => {

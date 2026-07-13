@@ -1,3 +1,8 @@
+# v0.10.6 (2026-07-13)
+
+## Fixes
+- **Headroom**: status/setup flapping — probe `/livez`/`/healthz` (not slow upstream-aware `/readyz`/`/health`), longer timeout, cache CLI detect; toggle tracks enable setting not probe; compose healthcheck uses `/livez` — voravitl
+
 # v0.10.5 (2026-07-13)
 
 ## Fixes
