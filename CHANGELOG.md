@@ -1,3 +1,8 @@
+# v0.10.3 (2026-07-13)
+
+## Features
+- **UI**: show **Test Chat** in the dashboard sidebar (was commented Hidden) so combo/model playground is discoverable after #110 — voravitl
+
 # v0.10.2 (2026-07-13)
 
 ## Features
