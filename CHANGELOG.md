@@ -1,3 +1,8 @@
+# v0.10.9 (2026-07-13)
+
+## Fixes
+- **Headroom**: Docker settings `localhost:8787` rewrites to `HEADROOM_URL` (e.g. `http://headroom:8787`); compress timeout 3s→15s; clearer kiro/timeout diagnostics — voravitl
+
 # v0.10.8 (2026-07-13)
 
 ## Features

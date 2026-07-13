@@ -36,6 +36,27 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]", "0.0.0
 
 export const DEFAULT_HEADROOM_URL = process.env.HEADROOM_URL || "http://localhost:8787";
 
+/**
+ * Resolve the Headroom proxy URL for runtime compress + status probes.
+ *
+ * Docker Compose sets HEADROOM_URL=http://headroom:8787. Dashboard users often
+ * save http://localhost:8787 (works from the host browser, fails inside the
+ * 888router container → ECONNREFUSED / timeout). When env points at a non-loopback
+ * sidecar and settings still say localhost, prefer the env URL.
+ */
+export function resolveHeadroomUrl(settingsUrl) {
+  const envUrl = (process.env.HEADROOM_URL || "").trim();
+  const configured = String(settingsUrl || "").trim() || DEFAULT_HEADROOM_URL;
+  if (
+    envUrl
+    && isLoopbackHeadroomUrl(configured)
+    && !isLoopbackHeadroomUrl(envUrl)
+  ) {
+    return envUrl;
+  }
+  return configured;
+}
+
 // Cache CLI/python detection — status is polled often; execSync is slow cold.
 let detectCache = { at: 0, path: undefined, python: undefined };
 const DETECT_CACHE_TTL_MS = 30_000;

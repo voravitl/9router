@@ -12,7 +12,7 @@ import { getSettings, updateProviderConnection } from "@/lib/localDb";
 import { isAccountQualityFailure, updateHealthEma } from "open-sse/services/accountScoring.js";
 import { getModelInfo, getComboModels } from "../services/model.js";
 import { handleChatCore } from "open-sse/handlers/chatCore.js";
-import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
+import { DEFAULT_HEADROOM_URL, resolveHeadroomUrl } from "@/lib/headroom/detect";
 import { errorResponse, unavailableResponse } from "open-sse/utils/error.js";
 import { handleComboChat, handleFusionChat } from "open-sse/services/combo.js";
 import { handleBypassRequest } from "open-sse/utils/bypassHandler.js";
@@ -263,7 +263,8 @@ async function handleSingleModelChat(body, modelStr, clientRawRequest = null, re
       ccFilterNaming: !!chatSettings.ccFilterNaming,
       rtkEnabled: !!chatSettings.rtkEnabled,
       headroomEnabled: !!chatSettings.headroomEnabled,
-      headroomUrl: chatSettings.headroomUrl || DEFAULT_HEADROOM_URL,
+      // Prefer compose sidecar URL when settings still say localhost (Docker).
+      headroomUrl: resolveHeadroomUrl(chatSettings.headroomUrl || DEFAULT_HEADROOM_URL),
       headroomCompressUserMessages: !!chatSettings.headroomCompressUserMessages,
       cavemanEnabled: !!chatSettings.cavemanEnabled,
       cavemanLevel: chatSettings.cavemanLevel || "full",

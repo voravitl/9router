@@ -565,6 +565,11 @@ export default function TokenSaverClient() {
                   enabled · proxy not reachable (fail-open)
                 </span>
               ) : null}
+              {headroomStatus.urlRewritten ? (
+                <span className="text-xs text-text-muted" title={headroomStatus.configuredUrl || ""}>
+                  using {headroomStatus.url} (Docker)
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setShowHeadroomInstallModal(true)}

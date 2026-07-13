@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/localDb";
-import { DEFAULT_HEADROOM_URL, getHeadroomStatus } from "@/lib/headroom/detect";
+import { DEFAULT_HEADROOM_URL, getHeadroomStatus, resolveHeadroomUrl } from "@/lib/headroom/detect";
 import { getManagedPid } from "@/lib/headroom/process";
 
 export const dynamic = "force-dynamic";
@@ -8,10 +8,17 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const settings = await getSettings();
-    const url = settings.headroomUrl || DEFAULT_HEADROOM_URL;
+    const configured = settings.headroomUrl || DEFAULT_HEADROOM_URL;
+    const url = resolveHeadroomUrl(configured);
     const status = await getHeadroomStatus(url);
     const managedPid = getManagedPid();
-    return NextResponse.json({ ...status, url, managedPid });
+    return NextResponse.json({
+      ...status,
+      url,
+      configuredUrl: configured,
+      urlRewritten: url !== configured,
+      managedPid,
+    });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

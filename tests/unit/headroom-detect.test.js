@@ -12,6 +12,7 @@ import {
   getHeadroomStatus,
   isLoopbackHeadroomUrl,
   probeProxyRunning,
+  resolveHeadroomUrl,
   __resetDetectCache,
 } from "../../src/lib/headroom/detect.js";
 
@@ -57,5 +58,19 @@ describe("headroom detect", () => {
     expect(isLoopbackHeadroomUrl("http://127.0.0.1:8787")).toBe(true);
     expect(isLoopbackHeadroomUrl("http://headroom:8787")).toBe(false);
     expect(isLoopbackHeadroomUrl("not-a-url")).toBe(false);
+  });
+
+  it("rewrites localhost settings to HEADROOM_URL when env is a docker sidecar", () => {
+    const prev = process.env.HEADROOM_URL;
+    process.env.HEADROOM_URL = "http://headroom:8787";
+    try {
+      expect(resolveHeadroomUrl("http://localhost:8787")).toBe("http://headroom:8787");
+      expect(resolveHeadroomUrl("http://127.0.0.1:8787")).toBe("http://headroom:8787");
+      // explicit non-loopback settings win
+      expect(resolveHeadroomUrl("http://10.0.0.5:8787")).toBe("http://10.0.0.5:8787");
+    } finally {
+      if (prev === undefined) delete process.env.HEADROOM_URL;
+      else process.env.HEADROOM_URL = prev;
+    }
   });
 });

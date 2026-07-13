@@ -5,7 +5,12 @@ import {
   openaiToOpenAIResponsesRequest,
 } from "../translator/request/openai-responses.js";
 
-const DEFAULT_TIMEOUT_MS = 3000;
+// Agent contexts can be large; 3s was the main source of "aborted due to timeout"
+// when Headroom was reachable but slow. Override with HEADROOM_TIMEOUT_MS.
+const DEFAULT_TIMEOUT_MS = Math.max(
+  1000,
+  parseInt(process.env.HEADROOM_TIMEOUT_MS || "15000", 10) || 15000,
+);
 
 function jsonBytes(value) {
   try {
@@ -96,7 +101,15 @@ async function callCompress(url, messages, model, timeoutMs, compressUserMessage
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
-    setDiagnostic(diagnostics, `request failed: ${describeFetchError(error)}`);
+    const name = error?.name || "";
+    if (name === "TimeoutError" || name === "AbortError" || /aborted|timeout/i.test(error?.message || "")) {
+      setDiagnostic(
+        diagnostics,
+        `request failed: timeout after ${timeoutMs}ms (check URL; Docker needs http://headroom:8787 not localhost)`,
+      );
+    } else {
+      setDiagnostic(diagnostics, `request failed: ${describeFetchError(error)}`);
+    }
     return null;
   }
   if (!res.ok) {
@@ -172,11 +185,16 @@ export async function compressWithHeadroom(body, { enabled, url, model, format, 
     }
 
     // OpenAI shape: messages/input go straight to the proxy.
+    // Kiro (conversationState) and other binary/native shapes are not supported.
     const key = Array.isArray(body.messages) ? "messages"
       : Array.isArray(body.input) ? "input"
       : null;
     if (!key) {
-      setDiagnostic(diagnostics, `unsupported ${format || "unknown"} request shape`);
+      if (format === "kiro" || body.conversationState) {
+        setDiagnostic(diagnostics, "unsupported kiro request shape (Headroom needs OpenAI/Claude messages; Kiro uses conversationState)");
+      } else {
+        setDiagnostic(diagnostics, `unsupported ${format || "unknown"} request shape`);
+      }
       return null;
     }
     const data = await callCompress(url, body[key], model, timeoutMs, compressUserMessages, diagnostics || {});

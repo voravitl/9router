@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/localDb";
-import { DEFAULT_HEADROOM_URL } from "@/lib/headroom/detect";
+import { DEFAULT_HEADROOM_URL, resolveHeadroomUrl } from "@/lib/headroom/detect";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
 async function getTargetBase() {
   const settings = await getSettings();
-  const url = settings.headroomUrl || DEFAULT_HEADROOM_URL;
+  const url = resolveHeadroomUrl(settings.headroomUrl || DEFAULT_HEADROOM_URL);
   const target = new URL(url);
   if (!["http:", "https:"].includes(target.protocol)) {
     throw new Error("Headroom URL must use http or https");
