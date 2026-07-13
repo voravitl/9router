@@ -1,3 +1,14 @@
+# v0.10.2 (2026-07-13)
+
+## Features
+- **Dashboard**: basic-chat can select LLM combos and show token-save meta (RTK/headroom) after turns; Usage request-details shows Token save column + drawer (#106–#109) — voravitl
+- **Observability**: persist `clientModel`, `rtkStats`, `headroomStats` on request details (flush path fixed so fields are not dropped) (#106–#109) — voravitl
+- **CI/CD**: unit-smoke on PR; docker-publish gated on unit-smoke before image push — voravitl
+
+## Fixes
+- **xAI/Grok**: cap tools at 250 before upstream call to avoid `Maximum tools limit reached` 400 when Claude Code sends 260+ MCP tools (#111) — voravitl
+- **basic-chat**: route chat through `/v1/chat/completions` (missing `/api/dashboard/chat/completions` was 404) — voravitl
+
 # v0.7.2 (2026-07-05)
 
 ## Features
