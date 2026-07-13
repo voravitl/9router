@@ -26,11 +26,133 @@ function messagePayload(body) {
   return null;
 }
 
+/** Sum of Kiro toolResult text lengths (for diagnostics before/after). */
+function kiroToolTextBytes(body) {
+  let n = 0;
+  for (const slot of collectKiroToolTextSlots(body)) n += slot.text.length;
+  return n;
+}
+
 function captureSizeSnapshot(body) {
   const messages = messagePayload(body);
+  const messageBytes = messages
+    ? jsonBytes(messages)
+    : (body?.conversationState ? kiroToolTextBytes(body) : 0);
   return {
     bodyBytes: jsonBytes(body),
-    messageBytes: messages ? jsonBytes(messages) : 0,
+    messageBytes,
+  };
+}
+
+// Minimum chars before we spend a Headroom round-trip on a single Kiro tool blob.
+const KIRO_HEADROOM_MIN_CHARS = 800;
+// Cap concurrent tool blobs in one compress call (keeps payload + latency bounded).
+const KIRO_HEADROOM_MAX_SLOTS = 12;
+
+/**
+ * Collect compressible tool-result text slots from Kiro conversationState.
+ * Mirrors RTK's walk (history + currentMessage); skips status:"error".
+ * @returns {{ part: { text: string }, text: string }[]}
+ */
+function collectKiroToolTextSlots(body) {
+  const slots = [];
+  const state = body?.conversationState;
+  if (!state) return slots;
+
+  const walk = (msg) => {
+    const toolResults = msg?.userInputMessage?.userInputMessageContext?.toolResults;
+    if (!Array.isArray(toolResults)) return;
+    for (const tr of toolResults) {
+      if (tr?.status === "error") continue;
+      if (!Array.isArray(tr.content)) continue;
+      for (const part of tr.content) {
+        if (part && typeof part.text === "string" && part.text.length > 0) {
+          slots.push({ part, text: part.text });
+        }
+      }
+    }
+  };
+
+  if (Array.isArray(state.history)) {
+    for (const msg of state.history) walk(msg);
+  }
+  if (state.currentMessage) walk(state.currentMessage);
+  return slots;
+}
+
+function extractMessageText(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+  const parts = [];
+  for (const p of content) {
+    if (typeof p === "string") parts.push(p);
+    else if (p && typeof p.text === "string") parts.push(p.text);
+    else if (p && typeof p.content === "string") parts.push(p.content);
+  }
+  const joined = parts.join("");
+  return joined.length ? joined : null;
+}
+
+/**
+ * Headroom path for Kiro/CodeWhisperer: compress large toolResult texts in place
+ * via a single OpenAI-shaped /v1/compress call, then re-inject by index.
+ * Fail-open: returns null without mutating on any failure.
+ */
+async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics) {
+  const slots = collectKiroToolTextSlots(body);
+  const work = slots
+    .filter((s) => s.text.length >= KIRO_HEADROOM_MIN_CHARS)
+    .sort((a, b) => b.text.length - a.text.length)
+    .slice(0, KIRO_HEADROOM_MAX_SLOTS);
+
+  if (work.length === 0) {
+    setDiagnostic(
+      diagnostics,
+      slots.length === 0
+        ? "kiro: no tool text to compress"
+        : "kiro: tool text below compress threshold",
+    );
+    return null;
+  }
+
+  const oaiMessages = work.map((s) => ({ role: "user", content: s.text }));
+  const data = await callCompress(url, oaiMessages, model, timeoutMs, false, diagnostics || {});
+  if (!data) return null;
+
+  const outMsgs = data.messages;
+  if (!Array.isArray(outMsgs) || outMsgs.length === 0) {
+    setDiagnostic(diagnostics, "kiro: headroom returned empty messages");
+    return null;
+  }
+
+  const n = Math.min(outMsgs.length, work.length);
+  let applied = 0;
+  for (let i = 0; i < n; i++) {
+    const newText = extractMessageText(outMsgs[i]?.content);
+    if (!newText || newText.length === 0) continue;
+    // Safety: never grow, never empty (same contract as RTK)
+    if (newText.length >= work[i].text.length) continue;
+    work[i].part.text = newText;
+    applied += 1;
+  }
+
+  if (applied === 0) {
+    setDiagnostic(diagnostics, "kiro: headroom did not shrink any tool text");
+    return null;
+  }
+
+  if (diagnostics) {
+    diagnostics.kiroSlots = work.length;
+    diagnostics.kiroApplied = applied;
+  }
+
+  return {
+    tokens_before: data.tokens_before ?? 0,
+    tokens_after: data.tokens_after ?? 0,
+    tokens_saved: data.tokens_saved ?? 0,
+    messages: data.messages,
+    kiro_tool_slots: work.length,
+    kiro_applied: applied,
   };
 }
 
@@ -144,6 +266,15 @@ export async function compressWithHeadroom(body, { enabled, url, model, format, 
   try {
     if (diagnostics) diagnostics.before = captureSizeSnapshot(body);
 
+    // Kiro / CodeWhisperer: conversationState (not messages[]). Compress large
+    // toolResult texts via OpenAI-shaped Headroom call, re-inject in place (#122).
+    if (format === "kiro" || body.conversationState) {
+      const data = await compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics || {});
+      if (!data) return null;
+      if (diagnostics) diagnostics.after = captureSizeSnapshot(body);
+      return data;
+    }
+
     // Claude shape: translate → OpenAI → compress → translate back.
     if (format === "claude") {
       const oai = claudeToOpenAIRequest(model, body, false);
@@ -185,16 +316,11 @@ export async function compressWithHeadroom(body, { enabled, url, model, format, 
     }
 
     // OpenAI shape: messages/input go straight to the proxy.
-    // Kiro (conversationState) and other binary/native shapes are not supported.
     const key = Array.isArray(body.messages) ? "messages"
       : Array.isArray(body.input) ? "input"
       : null;
     if (!key) {
-      if (format === "kiro" || body.conversationState) {
-        setDiagnostic(diagnostics, "unsupported kiro request shape (Headroom needs OpenAI/Claude messages; Kiro uses conversationState)");
-      } else {
-        setDiagnostic(diagnostics, `unsupported ${format || "unknown"} request shape`);
-      }
+      setDiagnostic(diagnostics, `unsupported ${format || "unknown"} request shape`);
       return null;
     }
     const data = await callCompress(url, body[key], model, timeoutMs, compressUserMessages, diagnostics || {});

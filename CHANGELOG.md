@@ -1,3 +1,8 @@
+# v0.10.12 (2026-07-13)
+
+## Features
+- **Headroom + Kiro**: compress large `conversationState` toolResult texts via Headroom `/v1/compress` (CodeWhisperer path); error traces preserved; fail-open (closes #122) — voravitl
+
 # v0.10.11 (2026-07-13)
 
 ## Fixes
