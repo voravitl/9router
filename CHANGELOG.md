@@ -1,3 +1,8 @@
+# v0.10.14 (2026-07-13)
+
+## Features
+- **Headroom + Kiro**: expand compress beyond toolResults — also large `userInputMessage` content (string/array text); multi-slot stable index mapping; error toolResults still preserved; fail-open (follow-up #122) — voravitl
+
 # v0.10.13 (2026-07-13)
 
 ## Fixes

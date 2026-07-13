@@ -26,10 +26,10 @@ function messagePayload(body) {
   return null;
 }
 
-/** Sum of Kiro toolResult text lengths (for diagnostics before/after). */
-function kiroToolTextBytes(body) {
+/** Sum of Kiro compressible text lengths (tool + user content; diagnostics). */
+function kiroCompressTextBytes(body) {
   let n = 0;
-  for (const slot of collectKiroToolTextSlots(body)) n += slot.text.length;
+  for (const slot of collectKiroCompressSlots(body)) n += slot.text.length;
   return n;
 }
 
@@ -37,37 +37,73 @@ function captureSizeSnapshot(body) {
   const messages = messagePayload(body);
   const messageBytes = messages
     ? jsonBytes(messages)
-    : (body?.conversationState ? kiroToolTextBytes(body) : 0);
+    : (body?.conversationState ? kiroCompressTextBytes(body) : 0);
   return {
     bodyBytes: jsonBytes(body),
     messageBytes,
   };
 }
 
-// Minimum chars before we spend a Headroom round-trip on a single Kiro tool blob.
+// Minimum chars before we spend a Headroom round-trip on a single Kiro blob.
 const KIRO_HEADROOM_MIN_CHARS = 800;
-// Cap concurrent tool blobs in one compress call (keeps payload + latency bounded).
+// Cap concurrent blobs in one compress call (keeps payload + latency bounded).
 const KIRO_HEADROOM_MAX_SLOTS = 12;
 
 /**
- * Collect compressible tool-result text slots from Kiro conversationState.
- * Mirrors RTK's walk (history + currentMessage); skips status:"error".
- * @returns {{ part: { text: string }, text: string }[]}
+ * Collect compressible text slots from Kiro conversationState:
+ * - toolResult content[].text (skips status:"error")
+ * - userInputMessage.content string, or array parts with .text
+ * Mirrors RTK walk (history + currentMessage).
+ * @returns {{ kind: 'tool'|'user', text: string, apply: (s: string) => void }[]}
  */
-function collectKiroToolTextSlots(body) {
+function collectKiroCompressSlots(body) {
   const slots = [];
   const state = body?.conversationState;
   if (!state) return slots;
 
   const walk = (msg) => {
-    const toolResults = msg?.userInputMessage?.userInputMessageContext?.toolResults;
+    const uim = msg?.userInputMessage;
+    if (!uim) return;
+
+    // User content (string or array of text parts)
+    const content = uim.content;
+    if (typeof content === "string" && content.length > 0) {
+      slots.push({
+        kind: "user",
+        text: content,
+        apply: (s) => {
+          uim.content = s;
+        },
+      });
+    } else if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part && typeof part.text === "string" && part.text.length > 0) {
+          slots.push({
+            kind: "user",
+            text: part.text,
+            apply: (s) => {
+              part.text = s;
+            },
+          });
+        }
+      }
+    }
+
+    // Tool results (skip errors — preserve traces)
+    const toolResults = uim.userInputMessageContext?.toolResults;
     if (!Array.isArray(toolResults)) return;
     for (const tr of toolResults) {
       if (tr?.status === "error") continue;
       if (!Array.isArray(tr.content)) continue;
       for (const part of tr.content) {
         if (part && typeof part.text === "string" && part.text.length > 0) {
-          slots.push({ part, text: part.text });
+          slots.push({
+            kind: "tool",
+            text: part.text,
+            apply: (s) => {
+              part.text = s;
+            },
+          });
         }
       }
     }
@@ -94,12 +130,12 @@ function extractMessageText(content) {
 }
 
 /**
- * Headroom path for Kiro/CodeWhisperer: compress large toolResult texts in place
- * via a single OpenAI-shaped /v1/compress call, then re-inject by index.
+ * Headroom path for Kiro/CodeWhisperer: compress large toolResult + userInput
+ * texts in place via a single OpenAI-shaped /v1/compress call, re-inject by index.
  * Fail-open: returns null without mutating on any failure.
  */
 async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics) {
-  const slots = collectKiroToolTextSlots(body);
+  const slots = collectKiroCompressSlots(body);
   const work = slots
     .filter((s) => s.text.length >= KIRO_HEADROOM_MIN_CHARS)
     .sort((a, b) => b.text.length - a.text.length)
@@ -109,20 +145,29 @@ async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics
     setDiagnostic(
       diagnostics,
       slots.length === 0
-        ? "kiro: no tool text to compress"
-        : "kiro: tool text below compress threshold",
+        ? "kiro: no compressible text"
+        : "kiro: text below compress threshold",
     );
     return null;
   }
 
-  // Headroom leaves role:user alone unless compress_user_messages=true.
-  // These blobs are tool outputs — send as role:tool so the proxy compresses them.
+  // Headroom leaves role:user alone unless compress_user_messages=true, and even
+  // then often no-ops on large agent blobs. Frame ALL Kiro slots as role:tool so
+  // the proxy actually compresses (same trick as tool-only path in v0.10.13).
+  // Index order is stable: work[i] ↔ oaiMessages[i] ↔ outMsgs[i].
   const oaiMessages = work.map((s, i) => ({
     role: "tool",
-    tool_call_id: `kiro-tool-${i}`,
+    tool_call_id: `kiro-${s.kind}-${i}`,
     content: s.text,
   }));
-  const data = await callCompress(url, oaiMessages, model, timeoutMs, false, diagnostics || {});
+  const data = await callCompress(
+    url,
+    oaiMessages,
+    model,
+    timeoutMs,
+    false,
+    diagnostics || {},
+  );
   if (!data) return null;
 
   const outMsgs = data.messages;
@@ -131,25 +176,28 @@ async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics
     return null;
   }
 
+  // Stable index mapping: only apply when Headroom returns enough messages.
+  // Never re-order; never grow; never empty (same contract as RTK).
   const n = Math.min(outMsgs.length, work.length);
   let applied = 0;
   for (let i = 0; i < n; i++) {
     const newText = extractMessageText(outMsgs[i]?.content);
     if (!newText || newText.length === 0) continue;
-    // Safety: never grow, never empty (same contract as RTK)
     if (newText.length >= work[i].text.length) continue;
-    work[i].part.text = newText;
+    work[i].apply(newText);
     applied += 1;
   }
 
   if (applied === 0) {
-    setDiagnostic(diagnostics, "kiro: headroom did not shrink any tool text");
+    setDiagnostic(diagnostics, "kiro: headroom did not shrink any text");
     return null;
   }
 
   if (diagnostics) {
     diagnostics.kiroSlots = work.length;
     diagnostics.kiroApplied = applied;
+    diagnostics.kiroUserSlots = work.filter((s) => s.kind === "user").length;
+    diagnostics.kiroToolSlots = work.filter((s) => s.kind === "tool").length;
   }
 
   return {
@@ -157,7 +205,9 @@ async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics
     tokens_after: data.tokens_after ?? 0,
     tokens_saved: data.tokens_saved ?? 0,
     messages: data.messages,
-    kiro_tool_slots: work.length,
+    kiro_slots: work.length,
+    kiro_tool_slots: work.filter((s) => s.kind === "tool").length,
+    kiro_user_slots: work.filter((s) => s.kind === "user").length,
     kiro_applied: applied,
   };
 }
@@ -273,7 +323,7 @@ export async function compressWithHeadroom(body, { enabled, url, model, format, 
     if (diagnostics) diagnostics.before = captureSizeSnapshot(body);
 
     // Kiro / CodeWhisperer: conversationState (not messages[]). Compress large
-    // toolResult texts via OpenAI-shaped Headroom call, re-inject in place (#122).
+    // toolResult + userInput texts via OpenAI-shaped Headroom, re-inject in place (#122).
     if (format === "kiro" || body.conversationState) {
       const data = await compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics || {});
       if (!data) return null;
