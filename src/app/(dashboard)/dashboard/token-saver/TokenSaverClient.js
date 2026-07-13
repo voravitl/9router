@@ -173,16 +173,18 @@ export default function TokenSaverClient() {
   }, [refreshHeadroomStatus]);
 
   const headroomRunning = !!headroomStatus.running;
+  const headroomLocalUrl = headroomStatus.localUrl !== false;
+  // External Docker sidecar (e.g. http://headroom:8787) — not managed by this process.
+  const headroomExternal = headroomStatus.localUrl === false;
   const headroomStatusLabel = headroomStatus.loading
     ? "Checking…"
     : headroomRunning
       ? "Running"
-      : headroomStatus.localUrl !== false && !headroomStatus.installed
-        ? "Not installed"
-        : headroomStatus.localUrl !== false
-          ? "Stopped"
-          : "External";
-  const headroomLocalUrl = headroomStatus.localUrl !== false;
+      : headroomExternal
+        ? "Unreachable"
+        : !headroomStatus.installed
+          ? "Not installed"
+          : "Stopped";
   const headroomCanStart = !!headroomStatus.canStart;
   const headroomManaged =
     headroomLocalUrl && !!headroomStatus.managedPid;
@@ -239,12 +241,17 @@ export default function TokenSaverClient() {
               >
                 {headroomStatusLabel}
               </span>
+              {headroomEnabled && !headroomRunning && !headroomStatus.loading ? (
+                <span className="text-xs text-warning">
+                  enabled · proxy not reachable (fail-open)
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setShowHeadroomInstallModal(true)}
                 className="text-xs text-primary underline hover:opacity-80"
               >
-                {headroomRunning ? "Manage" : "Setup"}
+                {headroomRunning || headroomExternal ? "Manage" : "Setup"}
               </button>
             </div>
             <p className="text-sm text-text-muted mt-1">
@@ -252,8 +259,9 @@ export default function TokenSaverClient() {
             </p>
           </div>
           <Toggle
-            checked={headroomEnabled && headroomRunning}
-            disabled={!headroomRunning}
+            // Enabled state is independent of probe — compress is fail-open when down.
+            // Tying the toggle to `running` made Setup look on/off when /health was slow.
+            checked={headroomEnabled}
             onChange={() => handleHeadroomEnabled(!headroomEnabled)}
           />
         </div>
@@ -420,9 +428,17 @@ export default function TokenSaverClient() {
               {headroomActionLoading ? "Starting…" : "Start Headroom"}
             </Button>
           ) : !headroomLocalUrl ? (
-            <p className="text-sm text-warning">
-              Start Headroom separately at the configured URL, then recheck.
-            </p>
+            <div className="flex flex-col gap-2 text-sm">
+              <p className="text-warning">
+                {headroomRunning
+                  ? "Docker / external sidecar is reachable."
+                  : "Start the Headroom container (or external proxy) at the URL above, then Recheck."}
+              </p>
+              <p className="text-xs text-text-muted">
+                Compose example: service <code className="font-mono">headroom</code> on port 8787,
+                set Proxy URL to <code className="font-mono">http://headroom:8787</code>.
+              </p>
+            </div>
           ) : !headroomStatus.python ? (
             <p className="text-sm text-warning">
               Python ≥ 3.10 required for local managed mode. Install Python
