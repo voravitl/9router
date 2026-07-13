@@ -20,6 +20,7 @@ import { handleNonStreamingResponse } from "./chatCore/nonStreamingHandler.js";
 import { handleStreamingResponse, buildOnStreamComplete } from "./chatCore/streamingHandler.js";
 import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.js";
 import { dedupeTools } from "../utils/toolDeduper.js";
+import { capTools } from "../utils/toolCap.js";
 import { injectCaveman } from "../rtk/caveman.js";
 import { injectPonytail } from "../rtk/ponytail.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
@@ -151,6 +152,16 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     if (stripped.length > 0) {
       translatedBody.tools = deduped;
       log?.debug?.("TOOLDEDUP", `stripped ${stripped.length}: ${stripped.slice(0, 3).join(", ")}${stripped.length > 3 ? "..." : ""}`);
+    }
+  }
+
+  // Cap tools for providers with hard upstream limits (e.g. xAI max 250).
+  // Claude Code / agent clients often send 260+ MCP tools and get 400 invalid-argument.
+  const maxTools = PROVIDERS[provider]?.maxTools;
+  if (maxTools && Array.isArray(translatedBody.tools)) {
+    const { cappedFrom, cappedTo } = capTools(translatedBody, maxTools);
+    if (cappedFrom > cappedTo) {
+      log?.warn?.("TOOLCAP", `${provider}: tools ${cappedFrom} → ${cappedTo} (max ${maxTools})`);
     }
   }
 

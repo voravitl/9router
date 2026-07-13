@@ -35,6 +35,8 @@ for (const entry of REGISTRY) {
   if (entry.transport) {
     PROVIDERS[entry.id] = buildTransport(entry.transport, entry.oauth);
     if (entry.transports) PROVIDERS[entry.id].transports = entry.transports;
+    // Provider policy flags (not transport) — keep co-located on registry entry
+    if (entry.maxTools != null) PROVIDERS[entry.id].maxTools = entry.maxTools;
   }
   if (entry.models !== undefined) PROVIDER_MODELS[entry.alias || entry.id] = entry.models.map(normalizeModel);
   if (entry.oauth) PROVIDER_OAUTH[entry.id] = entry.oauth;

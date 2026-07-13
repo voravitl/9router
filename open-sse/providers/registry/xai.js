@@ -2,6 +2,8 @@ export default {
   id: "xai",
   priority: 280,
   alias: "xai",
+  // xAI API hard limit: "Maximum tools limit reached" at >250 tools
+  maxTools: 250,
   display: {
     name: "xAI (Grok)",
     icon: "auto_awesome",
