@@ -1,3 +1,8 @@
+# v0.10.4 (2026-07-13)
+
+## Fixes
+- **Models / xAI**: `grok-4.5` context was 256k via generic `*grok-4*`; set **500k** (xAI docs) with `*grok-4.5*` / `*grok-4-5*` patterns; catalog lists `grok-4.5` — voravitl
+
 # v0.10.3 (2026-07-13)
 
 ## Features
