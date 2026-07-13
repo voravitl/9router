@@ -89,3 +89,20 @@ Pre-translate hooks that compress `tool_result` content in-place to cut tokens. 
 - Security-sensitive env: `JWT_SECRET` (session cookie), `INITIAL_PASSWORD` (default `123456` — must override), `API_KEY_SECRET`, `MACHINE_ID_SALT`. Full env contract in `.env.example` and ARCHITECTURE.md's env matrix.
 - Binary/protobuf upstreams (kiro EventStream, cursor protobuf, commandcode NDJSON) don't round-trip through OpenAI — they're handled inside their own executor, not the translator.
 - Versioning: root and `cli/` are versioned independently; changes are logged in `CHANGELOG.md`. Commit style is Conventional Commits (`fix(translator): …`, `feat(...)`).
+
+## House rules (ship / audit)
+
+**Issue for PR link (HARD):** every code-changing PR must include `closes #N` / `fixes #N` / `resolves #N`. Issue exists to **link the PR** (audit trail) — body may be one line (`PR tracking.`). Do not ship on CHANGELOG/version alone.
+
+**FAST path (single fix):** issue → branch → PR (`closes #N`) → CI → merge → if `package.json` version bumped then `tag vX.Y.Z` + GitHub Release → deploy. Longrun optional.
+
+**FULL path:** longrun / multi-task — same issue link; `tracking_issue` on prd tasks; issue-audit before merge.
+
+**Carve-out:** `[skip-issue]` only for pure docs/chore with no version ship.
+
+Canonical: [wiki: issue-for-pr-link-house-rule](file:///Users/voravit.l/wiki/issue-for-pr-link-house-rule.md)
+
+## Rules & Policies
+
+- [Wiki Index](file:///Users/voravit.l/wiki/index.md) (`## rules-and-policies`)
+- [Issue for PR link](file:///Users/voravit.l/wiki/issue-for-pr-link-house-rule.md)
