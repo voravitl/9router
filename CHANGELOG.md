@@ -1,3 +1,8 @@
+# Unreleased
+
+## Fixes
+- **Headroom**: reject a `HEADROOM_URL` that resolves to a raw, non-loopback IP (e.g. an ephemeral Docker container IP like `10.100.0.2`) instead of a stable service name; falls back to configured/default and logs once (closes #129) — voravitl
+
 # v0.10.14 (2026-07-13)
 
 ## Features

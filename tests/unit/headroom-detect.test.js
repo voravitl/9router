@@ -73,4 +73,27 @@ describe("headroom detect", () => {
       else process.env.HEADROOM_URL = prev;
     }
   });
+
+  it("ignores a HEADROOM_URL that is a raw non-loopback IP (unstable Docker container IP)", () => {
+    const prev = process.env.HEADROOM_URL;
+    process.env.HEADROOM_URL = "http://10.100.0.2:8787";
+    try {
+      expect(resolveHeadroomUrl("http://localhost:8787")).toBe("http://localhost:8787");
+      expect(resolveHeadroomUrl("http://127.0.0.1:8787")).toBe("http://127.0.0.1:8787");
+    } finally {
+      if (prev === undefined) delete process.env.HEADROOM_URL;
+      else process.env.HEADROOM_URL = prev;
+    }
+  });
+
+  it("still honors a HEADROOM_URL that is an IPv6 raw-IP sidecar as untrusted", () => {
+    const prev = process.env.HEADROOM_URL;
+    process.env.HEADROOM_URL = "http://[fd00::2]:8787";
+    try {
+      expect(resolveHeadroomUrl("http://localhost:8787")).toBe("http://localhost:8787");
+    } finally {
+      if (prev === undefined) delete process.env.HEADROOM_URL;
+      else process.env.HEADROOM_URL = prev;
+    }
+  });
 });

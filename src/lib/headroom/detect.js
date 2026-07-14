@@ -33,8 +33,23 @@ const MIN_VERSION = [3, 10];
 const HEADROOM_HEALTH_TIMEOUT_MS = 3000;
 const HEADROOM_PROBE_PATHS = ["/livez", "/healthz", "/health"];
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"]);
+const IPV4_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 
 export const DEFAULT_HEADROOM_URL = process.env.HEADROOM_URL || "http://localhost:8787";
+
+// Raw IP literal (v4 or bracketed v6), as opposed to a stable Docker Compose
+// service name like "headroom". Container IPs are ephemeral/unstable across
+// restarts, so a non-loopback raw IP is not trustworthy as a routing target.
+function isRawIpHeadroomUrl(url) {
+  try {
+    const { hostname } = new URL(url);
+    return IPV4_RE.test(hostname) || (hostname.startsWith("[") && hostname.endsWith("]"));
+  } catch {
+    return false;
+  }
+}
+
+let warnedUntrustedEnvUrl = false;
 
 /**
  * Resolve the Headroom proxy URL for runtime compress + status probes.
@@ -42,7 +57,9 @@ export const DEFAULT_HEADROOM_URL = process.env.HEADROOM_URL || "http://localhos
  * Docker Compose sets HEADROOM_URL=http://headroom:8787. Dashboard users often
  * save http://localhost:8787 (works from the host browser, fails inside the
  * 888router container → ECONNREFUSED / timeout). When env points at a non-loopback
- * sidecar and settings still say localhost, prefer the env URL.
+ * sidecar and settings still say localhost, prefer the env URL — unless it's a raw,
+ * non-loopback IP (e.g. an ephemeral Docker container IP) rather than a stable
+ * service name, in which case it's untrustworthy and we fall back to configured/default.
  */
 export function resolveHeadroomUrl(settingsUrl) {
   const envUrl = (process.env.HEADROOM_URL || "").trim();
@@ -52,6 +69,13 @@ export function resolveHeadroomUrl(settingsUrl) {
     && isLoopbackHeadroomUrl(configured)
     && !isLoopbackHeadroomUrl(envUrl)
   ) {
+    if (isRawIpHeadroomUrl(envUrl)) {
+      if (!warnedUntrustedEnvUrl) {
+        warnedUntrustedEnvUrl = true;
+        console.warn(`[headroom] HEADROOM_URL="${envUrl}" is a raw IP, not a stable service name — ignoring, using "${configured}"`);
+      }
+      return configured;
+    }
     return envUrl;
   }
   return configured;
