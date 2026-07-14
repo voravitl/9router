@@ -274,4 +274,169 @@ describe("compressWithHeadroom — Kiro/CodeWhisperer conversationState (#122)",
         .toolResults[0].content[0].text,
     ).toBe("short");
   });
+
+  it("does not cross-slot corrupt when Headroom returns tool_call_ids shuffled (#130)", async () => {
+    const toolA = "A".repeat(2000);
+    const toolB = "B".repeat(1900);
+    const toolC = "C".repeat(1800);
+    const shortA = "a".repeat(50);
+    const shortB = "b".repeat(60);
+    const shortC = "c".repeat(70);
+
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          // Reversed/reordered relative to send order (kiro-tool-0/1/2) —
+          // proves matching is by id, never by response position.
+          messages: [
+            { role: "tool", tool_call_id: "kiro-tool-2", content: shortC },
+            { role: "tool", tool_call_id: "kiro-tool-0", content: shortA },
+            { role: "tool", tool_call_id: "kiro-tool-1", content: shortB },
+          ],
+          tokens_saved: 300,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const body = {
+      conversationState: {
+        history: [],
+        currentMessage: {
+          userInputMessage: {
+            content: "hi",
+            userInputMessageContext: {
+              toolResults: [
+                { status: "success", content: [{ text: toolA }] },
+                { status: "success", content: [{ text: toolB }] },
+                { status: "success", content: [{ text: toolC }] },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const stats = await compressWithHeadroom(body, {
+      enabled: true,
+      url: "http://headroom:8787",
+      format: "kiro",
+    });
+
+    expect(stats).not.toBeNull();
+    expect(stats.kiro_applied).toBe(3);
+    const results =
+      body.conversationState.currentMessage.userInputMessage.userInputMessageContext
+        .toolResults;
+    // Each slot must receive its OWN shortened text keyed by id — never a
+    // neighbor's, even though Headroom returned them in a different order.
+    expect(results[0].content[0].text).toBe(shortA);
+    expect(results[1].content[0].text).toBe(shortB);
+    expect(results[2].content[0].text).toBe(shortC);
+  });
+
+  it("skips unknown/missing tool_call_id without corrupting other slots (count mismatch)", async () => {
+    const toolA = "A".repeat(2000);
+    const toolB = "B".repeat(1900);
+    const shortA = "a".repeat(50);
+
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          // Only 1 of 2 sent slots comes back, plus one bogus id Headroom
+          // never received — must not be misapplied to any real slot.
+          messages: [
+            { role: "tool", tool_call_id: "kiro-tool-0", content: shortA },
+            { role: "tool", tool_call_id: "kiro-tool-99", content: "z".repeat(10) },
+          ],
+          tokens_saved: 100,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const body = {
+      conversationState: {
+        history: [],
+        currentMessage: {
+          userInputMessage: {
+            content: "hi",
+            userInputMessageContext: {
+              toolResults: [
+                { status: "success", content: [{ text: toolA }] },
+                { status: "success", content: [{ text: toolB }] },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const stats = await compressWithHeadroom(body, {
+      enabled: true,
+      url: "http://headroom:8787",
+      format: "kiro",
+    });
+
+    expect(stats).not.toBeNull();
+    expect(stats.kiro_applied).toBe(1);
+    const results =
+      body.conversationState.currentMessage.userInputMessage.userInputMessageContext
+        .toolResults;
+    expect(results[0].content[0].text).toBe(shortA);
+    // Slot 1 (toolB) had no matching id in the response — must stay
+    // untouched, never overwritten by the bogus "kiro-tool-99" entry.
+    expect(results[1].content[0].text).toBe(toolB);
+  });
+
+  it("before/after snapshot: only the compressed slot's text changes, rest of body untouched", async () => {
+    const longTool = "L".repeat(2000);
+    const shortTool = "s".repeat(80);
+    const untouchedField = { keep: "me", nested: [1, 2, 3] };
+
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          messages: [{ role: "tool", tool_call_id: "kiro-tool-0", content: shortTool }],
+          tokens_saved: 200,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const body = {
+      conversationState: {
+        history: [],
+        currentMessage: {
+          userInputMessage: {
+            content: "hi",
+            userInputMessageContext: {
+              toolResults: [{ status: "success", content: [{ text: longTool }] }],
+            },
+          },
+        },
+      },
+      unrelatedTopLevelField: untouchedField,
+    };
+    const before = JSON.parse(JSON.stringify(body));
+
+    const stats = await compressWithHeadroom(body, {
+      enabled: true,
+      url: "http://headroom:8787",
+      format: "kiro",
+    });
+
+    expect(stats).not.toBeNull();
+    // Only the compressed text changed — everything else is byte-identical
+    // to the pre-compress snapshot.
+    expect(body.unrelatedTopLevelField).toEqual(before.unrelatedTopLevelField);
+    expect(body.conversationState.currentMessage.userInputMessage.content).toBe(
+      before.conversationState.currentMessage.userInputMessage.content,
+    );
+    const result =
+      body.conversationState.currentMessage.userInputMessage.userInputMessageContext
+        .toolResults[0].content[0];
+    expect(result.text).toBe(shortTool);
+    expect(result.text).not.toBe(longTool);
+  });
 });
