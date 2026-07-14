@@ -154,12 +154,12 @@ async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics
   // Headroom leaves role:user alone unless compress_user_messages=true, and even
   // then often no-ops on large agent blobs. Frame ALL Kiro slots as role:tool so
   // the proxy actually compresses (same trick as tool-only path in v0.10.13).
-  // Index order is stable: work[i] ↔ oaiMessages[i] ↔ outMsgs[i].
-  const oaiMessages = work.map((s, i) => ({
-    role: "tool",
-    tool_call_id: `kiro-${s.kind}-${i}`,
-    content: s.text,
-  }));
+  const idToIndex = new Map();
+  const oaiMessages = work.map((s, i) => {
+    const id = `kiro-${s.kind}-${i}`;
+    idToIndex.set(id, i);
+    return { role: "tool", tool_call_id: id, content: s.text };
+  });
   const data = await callCompress(
     url,
     oaiMessages,
@@ -176,15 +176,25 @@ async function compressKiroWithHeadroom(body, url, model, timeoutMs, diagnostics
     return null;
   }
 
-  // Stable index mapping: only apply when Headroom returns enough messages.
-  // Never re-order; never grow; never empty (same contract as RTK).
-  const n = Math.min(outMsgs.length, work.length);
+  // Match each returned message back to its slot via the tool_call_id we sent
+  // (Headroom echoes it back verbatim — confirmed by the mocked responses this
+  // module is tested against). NEVER trust index order: Headroom may drop,
+  // reorder, or merge messages, and applying outMsgs[i] to work[i] by position
+  // would silently corrupt an unrelated slot (#130). A missing, unknown, or
+  // duplicate tool_call_id is skipped rather than guessed.
+  const seenIds = new Set();
   let applied = 0;
-  for (let i = 0; i < n; i++) {
-    const newText = extractMessageText(outMsgs[i]?.content);
+  for (const msg of outMsgs) {
+    const id = msg?.tool_call_id;
+    if (typeof id !== "string" || !id) continue;
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    const idx = idToIndex.get(id);
+    if (idx === undefined) continue;
+    const newText = extractMessageText(msg?.content);
     if (!newText || newText.length === 0) continue;
-    if (newText.length >= work[i].text.length) continue;
-    work[i].apply(newText);
+    if (newText.length >= work[idx].text.length) continue;
+    work[idx].apply(newText);
     applied += 1;
   }
 

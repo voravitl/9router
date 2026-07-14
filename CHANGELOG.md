@@ -2,6 +2,7 @@
 
 ## Fixes
 - **Headroom**: reject a `HEADROOM_URL` that resolves to a raw, non-loopback IP (e.g. an ephemeral Docker container IP like `10.100.0.2`) instead of a stable service name; falls back to configured/default and logs once (closes #129) — voravitl
+- **Headroom + Kiro**: match compressed messages back to slots by `tool_call_id` instead of array index — Headroom may drop/reorder/merge messages, and positional mapping silently applied compressed text to the wrong slot, permanently corrupting kiro `conversationState`. Unknown/duplicate/missing ids are now skipped rather than guessed (#130) — voravitl
 
 # v0.10.14 (2026-07-13)
 
