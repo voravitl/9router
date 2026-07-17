@@ -133,11 +133,12 @@ function normalizeLiveModel(model, connection) {
     ? model
     : model?.name || model?.displayName || rawId;
 
-  // Prefix provider/ for dedup key only — matches normalizeStaticModel format so
-  // dedupeModels() can match live models against static ones. Keep requestModel
-  // raw for non-compatible providers that may not understand provider/ prefix.
-  const dedupId = rawId.includes("/") ? rawId : `${connection.provider}/${rawId}`;
-  const isCompatible = isOpenAICompatibleProvider(connection.provider) || isAnthropicCompatibleProvider(connection.provider);
+  // dedupId: derive provider/model for dedupeModels() key, matching normalizeStaticModel.
+  // requestModel: what gets sent to the chat API — prefixed for compatible providers,
+  // raw ID for non-compatible (Kiro etc) that reject provider/ prefix.
+  const provider = connection?.provider || "";
+  const dedupId = rawId.includes("/") ? rawId : `${provider}/${rawId}`;
+  const isCompatible = isOpenAICompatibleProvider(provider) || isAnthropicCompatibleProvider(provider);
   const requestModel = isCompatible ? dedupId : rawId;
 
   return {
