@@ -16,6 +16,7 @@ import {
 import { parseDataUri } from "../concerns/image.js";
 import { DEFAULT_IMAGE_MIME } from "../schema/index.js";
 import { ROLE, OPENAI_BLOCK, CLAUDE_BLOCK } from "../schema/index.js";
+import { getCapabilitiesForModel } from "../../providers/capabilities.js";
 
 /** Render a single tool call as a readable text line. */
 function toolCallToText(name, input) {
@@ -527,6 +528,28 @@ export function openaiToKiroRequest(model, body, stream, credentials) {
   const thinkingBudget = resolveKiroThinkingBudget(body, credentials?.rawHeaders, model);
 
   const { history, currentMessage } = convertMessages(messages, tools, upstreamModel);
+
+  // Trim old history when payload exceeds the model's context window.
+  // Some gpt-5.6 models have tight context limits; dropping early turns keeps
+  // the request under the threshold and avoids a 400 CONTENT_LENGTH_EXCEEDS_THRESHOLD.
+  // Remove complete user+assistant pairs (2 entries). After removing, clear any
+  // dangling toolResults on the now-first user message whose tool_call pair was removed.
+  const contextWindow = getCapabilitiesForModel("kiro", upstreamModel).contextWindow || 200_000;
+  if (contextWindow && history.length > 2 && currentMessage) {
+    const maxSafeInputBytes = Math.floor(contextWindow * 3.0);
+    let payloadPreview = JSON.stringify({ history, text: currentMessage.userInputMessage?.content || "" });
+    while (history.length > 2 && payloadPreview.length > maxSafeInputBytes) {
+      history.splice(0, 2);
+      // Clear toolResults on the new first user msg if its matching tool_call was just removed
+      if (history[0]?.userInputMessage?.userInputMessageContext?.toolResults) {
+        delete history[0].userInputMessage.userInputMessageContext.toolResults;
+        if (Object.keys(history[0].userInputMessage.userInputMessageContext).length === 0) {
+          delete history[0].userInputMessage.userInputMessageContext;
+        }
+      }
+      payloadPreview = JSON.stringify({ history, text: currentMessage.userInputMessage?.content || "" });
+    }
+  }
 
   // API-key (headless) auth uses a raw CodeWhisperer credential whose profile is
   // account-specific. Injecting the shared builder-id/social *default* placeholder
