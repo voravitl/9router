@@ -64,7 +64,15 @@ const parseCodexModels = (data) => appendCodexReviewModels(parseOpenAIStyleModel
 // Enrich models with lastSyncedAt / firstSeenAt from the syncedModels kv.
 // Only stamps when models.length > 0 (empty list is a static-fallback signal).
 export async function buildModelsResponse({ provider, connectionId, models, warning }) {
-  const safeModels = Array.isArray(models) ? models.filter((m) => m && m.id) : [];
+  const rawModels = Array.isArray(models) ? models.filter((m) => m && m.id) : [];
+  // Dedup by model ID (upstream may return duplicates)
+  const seen = new Set();
+  const safeModels = [];
+  for (const m of rawModels) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    safeModels.push(m);
+  }
   let stampMap = {};
   if (safeModels.length > 0) {
     try {

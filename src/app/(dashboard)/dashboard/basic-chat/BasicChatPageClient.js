@@ -134,8 +134,9 @@ function normalizeLiveModel(model, connection) {
     : model?.name || model?.displayName || rawId;
 
   let requestModel = rawId;
-  const isCompatible = isOpenAICompatibleProvider(connection.provider) || isAnthropicCompatibleProvider(connection.provider);
-  if (isCompatible && !rawId.includes("/")) {
+  // Always prefix with provider when no slashes — matches normalizeStaticModel format,
+  // so dedupeModels() in the caller can match live models against static ones.
+  if (!rawId.includes("/")) {
     requestModel = `${connection.provider}/${rawId}`;
   }
 
