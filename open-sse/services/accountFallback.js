@@ -28,6 +28,11 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
   for (const rule of ERROR_RULES) {
     // Text-based rule: match substring in error message
     if (rule.text && lowerError && lowerError.includes(rule.text)) {
+      // noFallback: this error is not account-specific — rotating to another
+      // account rebuilds the identical request and hits the same wall (e.g. a
+      // gateway input-size limit). Surface it to the client instead of burning
+      // every account. Do not lock the account (cooldownMs 0).
+      if (rule.noFallback) return { shouldFallback: false, cooldownMs: 0 };
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
         return { shouldFallback: true, cooldownMs: getQuotaCooldown(newLevel), newBackoffLevel: newLevel };

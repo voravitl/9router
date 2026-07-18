@@ -5,6 +5,10 @@ import { v4 as uuidv4 } from "uuid";
 import { refreshKiroToken } from "../services/tokenRefresh.js";
 import { SSE_DONE, SSE_HEADERS } from "../utils/sseConstants.js";
 import { getCapabilitiesForModel } from "../providers/capabilities.js";
+import { shrinkKiroPayload } from "../translator/request/openai-to-kiro.js";
+
+// Max reactive shrink-and-retry attempts on a 400 CONTENT_LENGTH_EXCEEDS_THRESHOLD.
+const KIRO_MAX_SHRINK_RETRIES = 5;
 
 /**
  * KiroExecutor - Executor for Kiro AI (AWS CodeWhisperer)
@@ -108,9 +112,45 @@ export class KiroExecutor extends BaseExecutor {
    *
    * Errors are returned untransformed so the upstream handler can read the body,
    * classify the status, and trigger account fallback/cooldown.
+   *
+   * Reactive CONTENT_LENGTH shrink-retry: the Kiro/CodeWhisperer gateway enforces
+   * an undocumented input-size threshold (NOT the model context window). When it
+   * returns 400 CONTENT_LENGTH_EXCEEDS_THRESHOLD we shrink the built payload
+   * (drop old history, then truncate the current turn) and retry on the SAME
+   * account — driven by the real upstream signal instead of a guessed budget, so
+   * unknown / brand-new models work without a capabilities entry. Switching
+   * accounts here would be futile: every account rebuilds the identical payload
+   * and hits the same wall (see errorConfig content_length noFallback).
    */
   async execute(args) {
-    const result = await super.execute(args);
+    let result = await super.execute(args);
+
+    let attempts = 0;
+    while (
+      result?.response &&
+      !result.response.ok &&
+      result.response.status === 400 &&
+      attempts < KIRO_MAX_SHRINK_RETRIES
+    ) {
+      let bodyText = "";
+      try {
+        // clone() so the original body stays readable for parseUpstreamError
+        // downstream if we end up surfacing this 400 to the client.
+        bodyText = await result.response.clone().text();
+      } catch {
+        break;
+      }
+      if (!/content_length_exceeds_threshold/i.test(bodyText)) break;
+
+      // Shrink the built Kiro payload in place. false → nothing left to shed,
+      // so surface the 400 (client must compact its own context).
+      if (!shrinkKiroPayload(args.body)) break;
+
+      attempts++;
+      args.log?.info?.("KIRO", `content-length 400 — shrank payload, retry ${attempts}/${KIRO_MAX_SHRINK_RETRIES}`);
+      result = await super.execute(args);
+    }
+
     if (result?.response?.ok) {
       result.response = this.transformEventStreamToSSE(result.response, args.model);
     }

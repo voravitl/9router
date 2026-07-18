@@ -61,7 +61,11 @@ export const ERROR_RULES = [
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
-  { text: "content_length_exceeds_threshold", cooldownMs: 0 },
+  // Gateway input-size limit — not account-specific. KiroExecutor reactively
+  // shrinks + retries on the same account first; if it still surfaces, rotating
+  // accounts is futile (identical payload, same wall), so do not fall back or
+  // lock the account — surface the 400 to the client.
+  { text: "content_length_exceeds_threshold", noFallback: true },
   { text: "rate limit",               backoff: true },
   { text: "too many requests",        backoff: true },
   { text: "quota exceeded",           backoff: true },

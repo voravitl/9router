@@ -16,7 +16,6 @@ import {
 import { parseDataUri } from "../concerns/image.js";
 import { DEFAULT_IMAGE_MIME } from "../schema/index.js";
 import { ROLE, OPENAI_BLOCK, CLAUDE_BLOCK } from "../schema/index.js";
-import { getCapabilitiesForModel } from "../../providers/capabilities.js";
 
 /** Render a single tool call as a readable text line. */
 function toolCallToText(name, input) {
@@ -529,27 +528,14 @@ export function openaiToKiroRequest(model, body, stream, credentials) {
 
   const { history, currentMessage } = convertMessages(messages, tools, upstreamModel);
 
-  // Trim old history when payload exceeds the model's context window.
-  // Some gpt-5.6 models have tight context limits; dropping early turns keeps
-  // the request under the threshold and avoids a 400 CONTENT_LENGTH_EXCEEDS_THRESHOLD.
-  // Remove complete user+assistant pairs (2 entries). After removing, clear any
-  // dangling toolResults on the now-first user message whose tool_call pair was removed.
-  const contextWindow = getCapabilitiesForModel("kiro", upstreamModel).contextWindow || 200_000;
-  if (contextWindow && history.length > 2 && currentMessage) {
-    const maxSafeInputBytes = Math.floor(contextWindow * 3.0);
-    let payloadPreview = JSON.stringify({ history, text: currentMessage.userInputMessage?.content || "" });
-    while (history.length > 2 && payloadPreview.length > maxSafeInputBytes) {
-      history.splice(0, 2);
-      // Clear toolResults on the new first user msg if its matching tool_call was just removed
-      if (history[0]?.userInputMessage?.userInputMessageContext?.toolResults) {
-        delete history[0].userInputMessage.userInputMessageContext.toolResults;
-        if (Object.keys(history[0].userInputMessage.userInputMessageContext).length === 0) {
-          delete history[0].userInputMessage.userInputMessageContext;
-        }
-      }
-      payloadPreview = JSON.stringify({ history, text: currentMessage.userInputMessage?.content || "" });
-    }
-  }
+  // NOTE: payload size is NOT pre-checked here. The Kiro/CodeWhisperer gateway
+  // enforces an input-size threshold that is neither the model context window
+  // nor advertised, so any pre-check would be guessing (and a JSON.stringify of
+  // history alone under-counts the real payload — tools schema, prefix, and
+  // toolResults are not included). Oversize requests are handled REACTIVELY in
+  // KiroExecutor.execute() via shrinkKiroPayload() using the real 400
+  // CONTENT_LENGTH_EXCEEDS_THRESHOLD signal from upstream. This keeps unknown /
+  // brand-new models working without a capabilities entry.
 
   // API-key (headless) auth uses a raw CodeWhisperer credential whose profile is
   // account-specific. Injecting the shared builder-id/social *default* placeholder
@@ -625,6 +611,81 @@ export function openaiToKiroRequest(model, body, stream, credentials) {
   });
 
   return payload;
+}
+
+// Smallest the current user message is shrunk to before we give up (chars).
+const KIRO_SHRINK_MIN_CONTENT = 4000;
+
+/**
+ * Truncate a large text keeping head + tail, dropping the middle. Char-based
+ * (Kiro content is often one huge line, so a line-based cut would no-op).
+ */
+function truncateContentHeadTail(text, target) {
+  if (text.length <= target) return text;
+  const marker = "\n\n... [truncated by 9router to fit Kiro input limit] ...\n\n";
+  const keep = target - marker.length;
+  if (keep <= 0) return text.slice(0, Math.max(0, target));
+  const head = Math.ceil(keep * 0.6);
+  const tail = keep - head;
+  return text.slice(0, head) + marker + text.slice(text.length - tail);
+}
+
+/**
+ * Reactively shrink a built Kiro payload after upstream returns 400
+ * CONTENT_LENGTH_EXCEEDS_THRESHOLD. Called in a bounded loop by
+ * KiroExecutor.execute() — each call removes one increment of size and returns
+ * true, or returns false when nothing more can be shed (floor reached → the 400
+ * is surfaced to the client).
+ *
+ * The Kiro/CodeWhisperer gateway enforces an undocumented input-size threshold
+ * that is NOT the model context window, so this uses the real 400 signal rather
+ * than any guessed budget — which keeps unknown / brand-new models working
+ * without needing a capabilities entry.
+ *
+ * Order: drop the oldest history turn-pair first (tools live on currentMessage,
+ * so they are never dropped); once history is empty, truncate the current user
+ * message content head+tail.
+ *
+ * @param {object} payload built Kiro payload (mutated in place)
+ * @returns {boolean} true if it shrank something, false if at the floor
+ */
+export function shrinkKiroPayload(payload) {
+  const state = payload?.conversationState;
+  if (!state) return false;
+
+  const history = state.history;
+  const currentMessage = state.currentMessage;
+
+  // Strategy 1: drop the oldest history turns. Keeps currentMessage (and its
+  // tools schema) intact. Drop ~half the remaining history per call (geometric)
+  // so we converge in a few round-trips even for long conversations — each call
+  // is one upstream request, so linear single-pair drops would be far too slow.
+  // Keep the drop count even and taken from the front so the remaining history
+  // stays user-first and alternating (Kiro requires it). Dropping an assistant
+  // turn can orphan a toolResult whose defining toolUse just left — reconcile
+  // folds those back into text (same shape flattenToolInteractions produces) so
+  // Kiro does not 400 on a dangling structured reference.
+  if (Array.isArray(history) && history.length > 0) {
+    let drop = Math.floor(history.length / 2);
+    if (drop % 2 === 1) drop += 1; // round up to an even count
+    if (drop < 2) drop = 2;        // always shed at least one turn-pair
+    history.splice(0, Math.min(drop, history.length));
+    reconcileOrphanedToolResults(history, currentMessage);
+    return true;
+  }
+
+  // Strategy 2: history exhausted — the current turn alone is too big (large
+  // paste / tool result). Halve its content head+tail per call, down to a floor.
+  const uim = currentMessage?.userInputMessage;
+  const content = uim?.content;
+  if (typeof content === "string" && content.length > KIRO_SHRINK_MIN_CONTENT) {
+    const target = Math.max(KIRO_SHRINK_MIN_CONTENT, Math.floor(content.length / 2));
+    uim.content = truncateContentHeadTail(content, target);
+    return true;
+  }
+
+  // Nothing left to shed.
+  return false;
 }
 
 register(FORMATS.OPENAI, FORMATS.KIRO, openaiToKiroRequest, null);
