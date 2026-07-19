@@ -173,4 +173,102 @@ describe("openaiToClaudeResponse late-streamed tool name", () => {
     const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || [])]);
     expect(blockStart).toBeUndefined();
   });
+
+  it("does not double the name when a provider re-echoes the full name each chunk", () => {
+    const state = createState();
+
+    // Many OpenAI-compatible providers repeat id + FULL name on every delta
+    // (not just null-name). Blind `+=` would yield "ReadRead" → the client then
+    // rejects "No such tool available: ReadRead" — the same break for a
+    // different stream shape.
+    const e1 = openaiToClaudeResponse({
+      id: "chatcmpl-echo",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, id: "toolu_echo", function: { name: "Read" } }] } }],
+    }, state);
+    const e2 = openaiToClaudeResponse({
+      id: "chatcmpl-echo",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, id: "toolu_echo", function: { name: "Read", arguments: "{}" } }] } }],
+    }, state);
+    const e3 = openaiToClaudeResponse({
+      id: "chatcmpl-echo",
+      model: "some-provider",
+      choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    }, state);
+
+    const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || []), ...(e3 || [])]);
+    expect(blockStart?.name).toBe("Read");
+  });
+
+  it("keeps the longest name when the provider streams growing snapshots", () => {
+    const state = createState();
+
+    // Snapshot streaming: "Re" then "Read" (each chunk is the full name so far).
+    const e1 = openaiToClaudeResponse({
+      id: "chatcmpl-snap",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, id: "toolu_snap", function: { name: "Re" } }] } }],
+    }, state);
+    const e2 = openaiToClaudeResponse({
+      id: "chatcmpl-snap",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "Read" } }] } }],
+    }, state);
+    const e3 = openaiToClaudeResponse({
+      id: "chatcmpl-snap",
+      model: "some-provider",
+      choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    }, state);
+
+    const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || []), ...(e3 || [])]);
+    expect(blockStart?.name).toBe("Read");
+  });
+
+  it("recovers a name that arrives before the id (provisional slot)", () => {
+    const state = createState();
+
+    // name-first, id-later: the tool must not be dropped.
+    const e1 = openaiToClaudeResponse({
+      id: "chatcmpl-pre",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, function: { name: "Read" } }] } }],
+    }, state);
+    const e2 = openaiToClaudeResponse({
+      id: "chatcmpl-pre",
+      model: "some-provider",
+      choices: [{ delta: { tool_calls: [{ index: 0, id: "toolu_pre", function: { arguments: "{}" } }] } }],
+    }, state);
+    const e3 = openaiToClaudeResponse({
+      id: "chatcmpl-pre",
+      model: "some-provider",
+      choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    }, state);
+
+    const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || []), ...(e3 || [])]);
+    expect(blockStart?.id).toBe("toolu_pre");
+    expect(blockStart?.name).toBe("Read");
+  });
+
+  it("downgrades stop_reason to end_turn when all tool calls are dropped", () => {
+    const state = createState();
+
+    // A tool call that never gets a name: it is dropped, so a finish_reason of
+    // tool_calls must NOT surface as stop_reason:"tool_use" (no block to run).
+    const e1 = openaiToClaudeResponse({
+      id: "chatcmpl-drop",
+      model: "glm-5.2",
+      choices: [{ delta: { tool_calls: [{ index: 0, id: "toolu_drop", function: { arguments: "{}" } }] } }],
+    }, state);
+    const e2 = openaiToClaudeResponse({
+      id: "chatcmpl-drop",
+      model: "glm-5.2",
+      choices: [{ delta: {}, finish_reason: "tool_calls" }],
+    }, state);
+
+    const all = [...(e1 || []), ...(e2 || [])];
+    expect(getToolUseBlockStart(all)).toBeUndefined();
+    const delta = all.find((e) => e.type === "message_delta");
+    expect(delta?.delta.stop_reason).toBe("end_turn");
+  });
 });

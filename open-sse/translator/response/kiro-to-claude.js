@@ -15,6 +15,7 @@
  */
 import { register } from "../index.js";
 import { FORMATS } from "../formats.js";
+import { accumulateToolName } from "../concerns/toolCall.js";
 
 function stopThinkingBlock(state, results) {
   if (!state.thinkingBlockStarted) return;
@@ -151,13 +152,15 @@ export function kiroToClaudeResponse(chunk, state) {
     if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
     for (const tc of delta.tool_calls) {
       const idx = tc.index ?? 0;
-      if (tc.id && !state.toolCalls.has(idx)) {
-        state.toolCalls.set(idx, { id: tc.id, name: "" });
+      // Provisional slot keyed on index alone so a name/args fragment arriving
+      // before the id is not lost; id/name filled in as fragments arrive.
+      if (!state.toolCalls.has(idx)) {
+        state.toolCalls.set(idx, { id: null, name: "" });
       }
       const toolInfo = state.toolCalls.get(idx);
-      if (!toolInfo) continue; // name/args before any id — skip defensively
+      if (tc.id) toolInfo.id = toolInfo.id || tc.id;
       if (tc.function?.name) {
-        toolInfo.name += tc.function.name;
+        toolInfo.name = accumulateToolName(toolInfo.name, tc.function.name);
       }
       if (tc.function?.arguments) {
         state.toolArgBuffers.set(
@@ -173,11 +176,13 @@ export function kiroToClaudeResponse(chunk, state) {
     stopThinkingBlock(state, results);
     stopTextBlock(state, results);
 
+    let emittedToolBlocks = 0;
     if (state.toolCalls) {
       for (const [idx, toolInfo] of state.toolCalls) {
-        // A tool call whose name never arrived is not a valid tool_use — skip
-        // it rather than emit a nameless block the Claude client would reject.
-        if (!toolInfo.name) continue;
+        // A provisional slot missing either the id or the name is not a valid
+        // tool_use — skip it rather than emit a block the Claude client rejects.
+        if (!toolInfo.id || !toolInfo.name) continue;
+        emittedToolBlocks++;
 
         // Allocate the block index now (deferred from first-sight of the id)
         // so it follows any text/thinking blocks flushed above.
@@ -206,10 +211,19 @@ export function kiroToClaudeResponse(chunk, state) {
     }
 
     state.finishReason = choice.finish_reason;
+
+    // If every tool call was dropped (no valid block emitted), a stop_reason of
+    // "tool_use" would tell the client to run tools that don't exist — some
+    // clients hang on that. Downgrade to end_turn.
+    let stopReason = convertFinishReason(choice.finish_reason);
+    if (stopReason === "tool_use" && emittedToolBlocks === 0) {
+      stopReason = "end_turn";
+    }
+
     const finalUsage = state.usage || { input_tokens: 0, output_tokens: 0 };
     results.push({
       type: "message_delta",
-      delta: { stop_reason: convertFinishReason(choice.finish_reason) },
+      delta: { stop_reason: stopReason },
       usage: finalUsage,
     });
     results.push({ type: "message_stop" });

@@ -70,4 +70,39 @@ describe("kiroToClaudeResponse late-streamed tool name", () => {
     const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || [])]);
     expect(blockStart).toBeUndefined();
   });
+
+  it("does not double the name when the provider re-echoes it each chunk", () => {
+    const state = {};
+
+    const e1 = kiroToClaudeResponse(chunk({ tool_calls: [{ index: 0, id: "toolu_e", function: { name: "Read" } }] }), state);
+    const e2 = kiroToClaudeResponse(chunk({ tool_calls: [{ index: 0, id: "toolu_e", function: { name: "Read", arguments: "{}" } }] }), state);
+    const e3 = kiroToClaudeResponse(chunk({}, "tool_calls"), state);
+
+    const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || []), ...(e3 || [])]);
+    expect(blockStart?.name).toBe("Read");
+  });
+
+  it("recovers a name that arrives before the id (provisional slot)", () => {
+    const state = {};
+
+    const e1 = kiroToClaudeResponse(chunk({ tool_calls: [{ index: 0, function: { name: "Read" } }] }), state);
+    const e2 = kiroToClaudeResponse(chunk({ tool_calls: [{ index: 0, id: "toolu_p", function: { arguments: "{}" } }] }), state);
+    const e3 = kiroToClaudeResponse(chunk({}, "tool_calls"), state);
+
+    const blockStart = getToolUseBlockStart([...(e1 || []), ...(e2 || []), ...(e3 || [])]);
+    expect(blockStart?.id).toBe("toolu_p");
+    expect(blockStart?.name).toBe("Read");
+  });
+
+  it("downgrades stop_reason to end_turn when all tool calls are dropped", () => {
+    const state = {};
+
+    const e1 = kiroToClaudeResponse(chunk({ tool_calls: [{ index: 0, id: "toolu_d", function: { arguments: "{}" } }] }), state);
+    const e2 = kiroToClaudeResponse(chunk({}, "tool_calls"), state);
+
+    const all = [...(e1 || []), ...(e2 || [])];
+    expect(getToolUseBlockStart(all)).toBeUndefined();
+    const delta = all.find((e) => e.type === "message_delta");
+    expect(delta?.delta.stop_reason).toBe("end_turn");
+  });
 });

@@ -151,3 +151,25 @@ export function fixMissingToolResponses(body) {
   return body;
 }
 
+// Merge a streamed tool-name fragment into the name accumulated so far.
+//
+// Streaming providers disagree on how they emit the tool name across chunks,
+// and the three shapes must be disambiguated or the name breaks:
+//   - split     "Re" then "ad"    → the fragment is genuinely new → append
+//   - re-echo   "Read" then "Read" → provider repeats the full name → no-op
+//   - snapshot  "Re" then "Read"   → each chunk is the full name so far → replace
+// Blind `prev + frag` corrupts re-echo ("ReadRead") and snapshot ("ReRead");
+// blind replacement corrupts split ("ad"). We use the prefix relationship
+// between the accumulated name and the incoming fragment to pick the right
+// merge: if either string is a prefix of the other it's the same name at a
+// different length (keep the longer); otherwise it's a genuinely new fragment
+// (append).
+export function accumulateToolName(prev, frag) {
+  if (!frag) return prev || "";
+  if (!prev) return frag;
+  if (frag === prev) return prev;                 // full re-echo
+  if (frag.startsWith(prev)) return frag;         // growing snapshot ("Re" → "Read")
+  if (prev.startsWith(frag)) return prev;         // shorter re-echo of an already-complete name
+  return prev + frag;                             // genuine split ("Re" + "ad")
+}
+

@@ -6,7 +6,7 @@ import { register } from "../index.js";
 import { FORMATS } from "../formats.js";
 import { buildChunk } from "../concerns/chunk.js";
 import { buildUsage } from "../concerns/usage.js";
-import { fallbackToolCallId } from "../concerns/toolCall.js";
+import { fallbackToolCallId, accumulateToolName } from "../concerns/toolCall.js";
 import { reasoningDelta, extractReasoningText } from "../concerns/reasoning.js";
 import { ROLE, OPENAI_BLOCK, RESPONSES_ITEM, OPENAI_FINISH, MODEL_FALLBACK } from "../schema/index.js";
 
@@ -263,10 +263,11 @@ function emitToolCall(state, emit, tc) {
   const newCallId = tc.id;
   const funcName = tc.function?.name;
 
-  // Accumulate the name across chunks — some providers split it (e.g. "Re"+"ad")
-  // or send it after the id. output_item.done reads this buffer, so the final
-  // item always carries the complete name even when it streams in fragments.
-  if (funcName) state.funcNames[tcIdx] = (state.funcNames[tcIdx] || "") + funcName;
+  // Accumulate the name across chunks, tolerating split ("Re"+"ad"), full
+  // re-echo ("Read"+"Read"), and growing-snapshot ("Re"+"Read") stream shapes.
+  // output_item.done reads this buffer, so the final item always carries the
+  // complete, un-doubled name even when it streams in fragments.
+  if (funcName) state.funcNames[tcIdx] = accumulateToolName(state.funcNames[tcIdx], funcName);
 
   if (!state.funcCallIds[tcIdx] && newCallId) {
     state.funcCallIds[tcIdx] = newCallId;
