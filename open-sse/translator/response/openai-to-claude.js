@@ -180,43 +180,36 @@ export function openaiToClaudeResponse(chunk, state) {
   }
 
   // Tool calls
+  //
+  // Providers disagree on WHEN the tool name arrives: deepseek/claude send it
+  // in the first chunk (alongside the id), while GLM 5.2 / GPT / grok open the
+  // call with an id and stream the name in a LATER chunk (sometimes split across
+  // several). The old code read `tc.function?.name || ""` once, at first sight
+  // of the id, and emitted content_block_start immediately — so a late name was
+  // lost and the block shipped with name:"" (Claude clients then reject it with
+  // "No such tool available: "). We now ACCUMULATE both name and args across
+  // chunks and defer the block emission to finish (the same shape the
+  // antigravity translator already uses), so the name is always complete.
   if (delta?.tool_calls) {
     for (const tc of delta.tool_calls) {
       const idx = tc.index ?? 0;
 
-      // GLM/fireworks repeats id+null-name on every arg chunk; open block once per idx
+      // Open the accumulator once per idx (GLM repeats the id on every chunk).
       if (tc.id && !state.toolCalls.has(idx)) {
-        stopThinkingBlock(state, results);
-        stopTextBlock(state, results);
+        state.toolCalls.set(idx, { id: tc.id, name: "" });
+      }
+      const toolInfo = state.toolCalls.get(idx);
+      if (!toolInfo) continue; // name/args before any id — skip defensively
 
-        const toolBlockIndex = state.nextBlockIndex++;
-        state.toolCalls.set(idx, { id: tc.id, name: tc.function?.name || "", blockIndex: toolBlockIndex });
-
-        // Strip prefix from tool name for response
-        let toolName = tc.function?.name || "";
-        if (toolName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) {
-          toolName = toolName.slice(CLAUDE_OAUTH_TOOL_PREFIX.length);
-        }
-
-        results.push({
-          type: "content_block_start",
-          index: toolBlockIndex,
-          content_block: {
-            type: CLAUDE_BLOCK.TOOL_USE,
-            id: tc.id,
-            name: toolName,
-            input: {}
-          }
-        });
+      // Accumulate the name from any chunk that carries a fragment of it.
+      if (tc.function?.name) {
+        toolInfo.name += tc.function.name;
       }
 
+      // Buffer args — sanitized and emitted at finish to fix bad params.
       if (tc.function?.arguments) {
-        const toolInfo = state.toolCalls.get(idx);
-        if (toolInfo) {
-          // Buffer args instead of streaming — sanitize at finish to fix bad params
-          if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
-          state.toolArgBuffers.set(idx, (state.toolArgBuffers.get(idx) || "") + tc.function.arguments);
-        }
+        if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
+        state.toolArgBuffers.set(idx, (state.toolArgBuffers.get(idx) || "") + tc.function.arguments);
       }
     }
   }
@@ -227,19 +220,43 @@ export function openaiToClaudeResponse(chunk, state) {
     stopTextBlock(state, results);
 
     for (const [idx, toolInfo] of state.toolCalls) {
-      // Emit buffered + sanitized args as single delta before stop
+      // Resolve the fully-accumulated name; strip the legacy proxy_ prefix.
+      let toolName = toolInfo.name || "";
+      if (toolName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) {
+        toolName = toolName.slice(CLAUDE_OAUTH_TOOL_PREFIX.length);
+      }
+
+      // A tool call whose name never arrived cannot be a valid tool_use — a
+      // nameless block is exactly what Claude clients reject, so drop it.
+      if (!toolName) continue;
+
+      // Allocate the block index now (deferred from first-sight of the id) so
+      // it always follows any text/thinking blocks already flushed above.
+      const toolBlockIndex = state.nextBlockIndex++;
+      results.push({
+        type: "content_block_start",
+        index: toolBlockIndex,
+        content_block: {
+          type: CLAUDE_BLOCK.TOOL_USE,
+          id: toolInfo.id,
+          name: toolName,
+          input: {}
+        }
+      });
+
+      // Emit buffered + sanitized args as a single delta before stop.
       const buffered = state.toolArgBuffers?.get(idx);
       if (buffered) {
         const sanitized = sanitizeToolArgs(toolInfo.name, buffered);
         results.push({
           type: "content_block_delta",
-          index: toolInfo.blockIndex,
+          index: toolBlockIndex,
           delta: { type: "input_json_delta", partial_json: sanitized }
         });
       }
       results.push({
         type: "content_block_stop",
-        index: toolInfo.blockIndex
+        index: toolBlockIndex
       });
     }
 

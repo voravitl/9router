@@ -141,39 +141,29 @@ export function kiroToClaudeResponse(chunk, state) {
   }
 
   // Tool calls.
+  //
+  // Same late-name hazard as openai-to-claude: some providers open the tool
+  // call with an id and stream the name in a later chunk. Accumulate name +
+  // args across chunks and defer the block emission to finish, so we never
+  // ship a tool_use block with an empty name.
   if (delta.tool_calls) {
     if (!state.toolCalls) state.toolCalls = new Map();
     if (!state.toolArgBuffers) state.toolArgBuffers = new Map();
     for (const tc of delta.tool_calls) {
       const idx = tc.index ?? 0;
-      if (tc.id) {
-        stopThinkingBlock(state, results);
-        stopTextBlock(state, results);
-        const toolBlockIndex = state.nextBlockIndex++;
-        state.toolCalls.set(idx, {
-          id: tc.id,
-          name: tc.function?.name || "",
-          blockIndex: toolBlockIndex,
-        });
-        results.push({
-          type: "content_block_start",
-          index: toolBlockIndex,
-          content_block: {
-            type: "tool_use",
-            id: tc.id,
-            name: tc.function?.name || "",
-            input: {},
-          },
-        });
+      if (tc.id && !state.toolCalls.has(idx)) {
+        state.toolCalls.set(idx, { id: tc.id, name: "" });
+      }
+      const toolInfo = state.toolCalls.get(idx);
+      if (!toolInfo) continue; // name/args before any id — skip defensively
+      if (tc.function?.name) {
+        toolInfo.name += tc.function.name;
       }
       if (tc.function?.arguments) {
-        const toolInfo = state.toolCalls.get(idx);
-        if (toolInfo) {
-          state.toolArgBuffers.set(
-            idx,
-            (state.toolArgBuffers.get(idx) || "") + tc.function.arguments
-          );
-        }
+        state.toolArgBuffers.set(
+          idx,
+          (state.toolArgBuffers.get(idx) || "") + tc.function.arguments
+        );
       }
     }
   }
@@ -185,15 +175,33 @@ export function kiroToClaudeResponse(chunk, state) {
 
     if (state.toolCalls) {
       for (const [idx, toolInfo] of state.toolCalls) {
+        // A tool call whose name never arrived is not a valid tool_use — skip
+        // it rather than emit a nameless block the Claude client would reject.
+        if (!toolInfo.name) continue;
+
+        // Allocate the block index now (deferred from first-sight of the id)
+        // so it follows any text/thinking blocks flushed above.
+        const toolBlockIndex = state.nextBlockIndex++;
+        results.push({
+          type: "content_block_start",
+          index: toolBlockIndex,
+          content_block: {
+            type: "tool_use",
+            id: toolInfo.id,
+            name: toolInfo.name,
+            input: {},
+          },
+        });
+
         const buffered = state.toolArgBuffers?.get(idx);
         if (buffered) {
           results.push({
             type: "content_block_delta",
-            index: toolInfo.blockIndex,
+            index: toolBlockIndex,
             delta: { type: "input_json_delta", partial_json: buffered },
           });
         }
-        results.push({ type: "content_block_stop", index: toolInfo.blockIndex });
+        results.push({ type: "content_block_stop", index: toolBlockIndex });
       }
     }
 
