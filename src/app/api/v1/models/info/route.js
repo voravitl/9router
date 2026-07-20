@@ -3,7 +3,7 @@ import { AI_PROVIDERS, ALIAS_TO_ID } from "@/shared/constants/providers";
 import { getModelKind } from "@/shared/constants/models";
 import { getCapabilitiesForModel } from "open-sse/providers/capabilities.js";
 import { getComboByName } from "@/lib/localDb";
-import { resolveComboContextWindow } from "../route.js";
+import { applyComboContextFields } from "../route.js";
 
 const KIND_ENDPOINT = {
   llm: "/v1/chat/completions",
@@ -59,23 +59,20 @@ async function lookup(fullId, requestedKind) {
     try {
       const combo = await getComboByName(fullId);
       if (combo) {
-        const cw = resolveComboContextWindow(combo) || 200000;
         const kind = combo.kind || "llm";
-        return {
+        const out = {
           id: combo.name,
           name: combo.name,
           kind,
           owned_by: "combo",
           endpoint: KIND_ENDPOINT[kind] || "/v1/chat/completions",
-          context_length: cw,
-          context_window: cw,
-          contextWindow: cw,
-          max_tokens: 128000,
-          max_completion_tokens: 128000,
         };
+        // webSearch/webFetch: no chat context; LLM: only catalog-resolved fields
+        applyComboContextFields(out, combo);
+        return out;
       }
     } catch (e) {
-      // Ignore lookup failure
+      console.warn(`[models/info] combo lookup failed for id=${fullId}:`, e?.message || e);
     }
     return null;
   }

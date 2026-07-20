@@ -97,27 +97,71 @@ const MODEL_TYPE_TO_KIND = {
   imageToText: "imageToText",
 };
 
+// Parse combo member ref: "alias/modelId" or bare "modelId" (slashless).
+function parseComboModelRef(ref) {
+  if (typeof ref !== "string" || !ref.trim()) return null;
+  const trimmed = ref.trim();
+  if (trimmed.includes("/")) {
+    const slash = trimmed.indexOf("/");
+    const alias = trimmed.slice(0, slash);
+    const modelId = trimmed.slice(slash + 1);
+    return { providerId: ALIAS_TO_ID[alias] || alias, modelId };
+  }
+  return { providerId: "", modelId: trimmed };
+}
+
 // Resolve context_window for a combo = min across member models (round-robin/fallback
 // must work for every member). undefined if no member is known to the catalog.
 // Truly unknown members (no PROVIDER/MODEL/PATTERN match) are excluded so they don't
 // fabricate the DEFAULT floor; a real 200k member is honoured.
+// Callers MUST NOT re-apply || 200000 on the HTTP surface — omit fields when undefined.
 export function resolveComboContextWindow(combo) {
   if (!Array.isArray(combo?.models) || combo.models.length === 0) return undefined;
   let min = Infinity;
   for (const ref of combo.models) {
-    if (typeof ref !== "string" || !ref.trim()) continue;
-    let providerId = "";
-    let modelId = ref.trim();
-    if (ref.includes("/")) {
-      const slash = ref.indexOf("/");
-      const alias = ref.slice(0, slash);
-      modelId = ref.slice(slash + 1);
-      providerId = ALIAS_TO_ID[alias] || alias;
-    }
-    const cw = resolveKnownContextWindow(providerId, modelId);
+    const parsed = parseComboModelRef(ref);
+    if (!parsed) continue;
+    const cw = resolveKnownContextWindow(parsed.providerId, parsed.modelId);
     if (cw && cw < min) min = cw;
   }
   return min === Infinity ? undefined : min;
+}
+
+// Min known maxOutput across combo members (only when member is catalog-known).
+// undefined when no member is known — omit max_tokens rather than invent 128k.
+export function resolveComboMaxOutput(combo) {
+  if (!Array.isArray(combo?.models) || combo.models.length === 0) return undefined;
+  let min = Infinity;
+  for (const ref of combo.models) {
+    const parsed = parseComboModelRef(ref);
+    if (!parsed) continue;
+    // Only trust maxOutput when the model is known to the context catalog
+    // (avoids getCapabilitiesForModel DEFAULT floor for unknown members).
+    if (!resolveKnownContextWindow(parsed.providerId, parsed.modelId)) continue;
+    const caps = getCapabilitiesForModel(parsed.providerId, parsed.modelId);
+    const mo = caps?.maxOutput;
+    if (mo && mo < min) min = mo;
+  }
+  return min === Infinity ? undefined : min;
+}
+
+/** Attach LLM combo context/max fields only when catalog-resolved (no fabricated floor). */
+export function applyComboContextFields(entry, combo) {
+  if (!entry || !combo) return entry;
+  const kind = combo.kind;
+  if (kind === "webSearch" || kind === "webFetch") return entry;
+  const comboContextWindow = resolveComboContextWindow(combo);
+  if (comboContextWindow) {
+    entry.context_length = comboContextWindow;
+    entry.context_window = comboContextWindow;
+    entry.contextWindow = comboContextWindow;
+  }
+  const maxOut = resolveComboMaxOutput(combo);
+  if (maxOut) {
+    entry.max_tokens = maxOut;
+    entry.max_completion_tokens = maxOut;
+  }
+  return entry;
 }
 
 function modelKind(model) {
@@ -285,13 +329,8 @@ export async function buildModelsList(kindFilter) {
     if (combo.kind === "webSearch" || combo.kind === "webFetch") {
       entry.kind = combo.kind;
     } else {
-      // LLM combos only — web search/fetch have no chat context window
-      const comboContextWindow = resolveComboContextWindow(combo) || 200000;
-      entry.context_length = comboContextWindow;
-      entry.context_window = comboContextWindow;
-      entry.contextWindow = comboContextWindow;
-      entry.max_tokens = 128000;
-      entry.max_completion_tokens = 128000;
+      // LLM combos only — catalog-resolved context/max; never fabricate 200k/128k floors
+      applyComboContextFields(entry, combo);
     }
     models.push(entry);
   }
