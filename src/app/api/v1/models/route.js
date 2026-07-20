@@ -101,15 +101,19 @@ const MODEL_TYPE_TO_KIND = {
 // must work for every member). undefined if no member is known to the catalog.
 // Truly unknown members (no PROVIDER/MODEL/PATTERN match) are excluded so they don't
 // fabricate the DEFAULT floor; a real 200k member is honoured.
-function resolveComboContextWindow(combo) {
+export function resolveComboContextWindow(combo) {
   if (!Array.isArray(combo?.models) || combo.models.length === 0) return undefined;
   let min = Infinity;
   for (const ref of combo.models) {
-    if (typeof ref !== "string" || !ref.includes("/")) continue;
-    const slash = ref.indexOf("/");
-    const alias = ref.slice(0, slash);
-    const modelId = ref.slice(slash + 1);
-    const providerId = ALIAS_TO_ID[alias] || alias;
+    if (typeof ref !== "string" || !ref.trim()) continue;
+    let providerId = "";
+    let modelId = ref.trim();
+    if (ref.includes("/")) {
+      const slash = ref.indexOf("/");
+      const alias = ref.slice(0, slash);
+      modelId = ref.slice(slash + 1);
+      providerId = ALIAS_TO_ID[alias] || alias;
+    }
     const cw = resolveKnownContextWindow(providerId, modelId);
     if (cw && cw < min) min = cw;
   }
@@ -282,11 +286,12 @@ export async function buildModelsList(kindFilter) {
       entry.kind = combo.kind;
     } else {
       // LLM combos only — web search/fetch have no chat context window
-      const comboContextWindow = resolveComboContextWindow(combo);
-      if (comboContextWindow) {
-        entry.context_window = comboContextWindow;
-        entry.contextWindow = comboContextWindow;
-      }
+      const comboContextWindow = resolveComboContextWindow(combo) || 200000;
+      entry.context_length = comboContextWindow;
+      entry.context_window = comboContextWindow;
+      entry.contextWindow = comboContextWindow;
+      entry.max_tokens = 128000;
+      entry.max_completion_tokens = 128000;
     }
     models.push(entry);
   }
@@ -469,6 +474,7 @@ export async function buildModelsList(kindFilter) {
         if (caps) model.capabilities = caps;
         const resolvedContextWindow = caps?.contextWindow;
         if (resolvedContextWindow) {
+          model.context_length = resolvedContextWindow;
           model.context_window = resolvedContextWindow;
           model.contextWindow = resolvedContextWindow;
         }

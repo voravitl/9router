@@ -2,6 +2,8 @@ import { PROVIDER_MODELS } from "open-sse/config/providerModels.js";
 import { AI_PROVIDERS, ALIAS_TO_ID } from "@/shared/constants/providers";
 import { getModelKind } from "@/shared/constants/models";
 import { getCapabilitiesForModel } from "open-sse/providers/capabilities.js";
+import { getComboByName } from "@/lib/localDb";
+import { resolveComboContextWindow } from "../route.js";
 
 const KIND_ENDPOINT = {
   llm: "/v1/chat/completions",
@@ -31,8 +33,11 @@ function buildInfo({ alias, providerId, model, kind, providerInfo }) {
   const caps = getCapabilitiesForModel(providerId, model.id);
   const resolvedContextWindow = model.contextWindow || caps?.contextWindow;
   if (resolvedContextWindow) {
+    out.context_length = resolvedContextWindow;
     out.contextWindow = resolvedContextWindow;
     out.context_window = resolvedContextWindow;
+    out.max_tokens = caps?.maxOutput || 128000;
+    out.max_completion_tokens = caps?.maxOutput || 128000;
   }
   if (kind === "tts" && TTS_VOICES_API.has(providerId)) {
     out.voicesUrl = `/v1/audio/voices?provider=${providerId}`;
@@ -46,10 +51,35 @@ function buildInfo({ alias, providerId, model, kind, providerInfo }) {
   return out;
 }
 
-// id format: "{alias}/{modelId}" - alias may also be providerId
-// requestedKind: optional, disambiguates duplicate ids across kinds (e.g. gemini-2.5-pro llm vs stt)
-function lookup(fullId, requestedKind) {
-  if (!fullId || !fullId.includes("/")) return null;
+// id format: "{alias}/{modelId}" - alias may also be providerId or combo name
+async function lookup(fullId, requestedKind) {
+  if (!fullId) return null;
+
+  if (!fullId.includes("/")) {
+    try {
+      const combo = await getComboByName(fullId);
+      if (combo) {
+        const cw = resolveComboContextWindow(combo) || 200000;
+        const kind = combo.kind || "llm";
+        return {
+          id: combo.name,
+          name: combo.name,
+          kind,
+          owned_by: "combo",
+          endpoint: KIND_ENDPOINT[kind] || "/v1/chat/completions",
+          context_length: cw,
+          context_window: cw,
+          contextWindow: cw,
+          max_tokens: 128000,
+          max_completion_tokens: 128000,
+        };
+      }
+    } catch (e) {
+      // Ignore lookup failure
+    }
+    return null;
+  }
+
   const slash = fullId.indexOf("/");
   const alias = fullId.slice(0, slash);
   const modelId = fullId.slice(slash + 1);
@@ -99,7 +129,7 @@ export async function GET(request) {
       { status: 400, headers: { "Access-Control-Allow-Origin": "*" } },
     );
   }
-  const info = lookup(id, kind);
+  const info = await lookup(id, kind);
   if (!info) {
     return Response.json(
       { error: { message: `Model not found: ${id}`, type: "not_found" } },
