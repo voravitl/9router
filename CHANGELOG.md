@@ -1,6 +1,9 @@
 # Unreleased
 
+# v0.10.19 (2026-07-20)
+
 ## Fixes
+- **Translator (tool calling)**: response translators shipped a Claude `tool_use` block with an empty `name` when a provider streamed the tool name in a chunk *after* the one carrying the tool id (GLM 5.2, GPT, grok, kiro, codex). Anthropic-compatible clients then rejected it (`No such tool available: `), breaking the session — deepseek/claude were unaffected only because they send the name in the first chunk. Introduced shared `accumulateToolName()` (disambiguates split / re-echo / snapshot streaming shapes via prefix relationship), provisional tool slots keyed on index (name/args before id no longer dropped), and `stop_reason` downgrade `tool_use`→`end_turn` when every tool call is dropped. Applied to `openai-to-claude`, `kiro-to-claude`, `openai-responses` (closes #147; follow-up #149 for `responsesTransformer`) — voravitl
 - **Headroom**: reject a `HEADROOM_URL` that resolves to a raw, non-loopback IP (e.g. an ephemeral Docker container IP like `10.100.0.2`) instead of a stable service name; falls back to configured/default and logs once (closes #129) — voravitl
 - **Headroom + Kiro**: match compressed messages back to slots by `tool_call_id` instead of array index — Headroom may drop/reorder/merge messages, and positional mapping silently applied compressed text to the wrong slot, permanently corrupting kiro `conversationState`. Unknown/duplicate/missing ids are now skipped rather than guessed (#130) — voravitl
 
