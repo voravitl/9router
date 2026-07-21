@@ -3,6 +3,7 @@ import { FORMATS } from "../formats.js";
 import { parseDataUri } from "../concerns/image.js";
 import { safeParseJSON } from "../concerns/json.js";
 import { ROLE, OPENAI_BLOCK } from "../schema/index.js";
+import { getCapabilitiesForModel } from "../../providers/capabilities.js";
 
 /**
  * Convert OpenAI request to Ollama format
@@ -11,7 +12,7 @@ import { ROLE, OPENAI_BLOCK } from "../schema/index.js";
  * - model: string
  * - messages: Array<{role: string, content: string, images?: string[] }>
  * - stream: boolean
- * - options?: {temperature?: number, num_predict?: number}
+ * - options?: {temperature?: number, num_predict?: number, num_ctx?: number}
  *
  * Key differences from OpenAI:
  * - Content must be string, not array
@@ -24,6 +25,13 @@ export function openaiToOllamaRequest(model, body, stream) {
     messages: normalizeMessages(body.messages),
     stream: stream
   };
+
+  // Inject context window limit (num_ctx) so Ollama doesn't default to 2048
+  const caps = getCapabilitiesForModel("ollama", model);
+  if (caps?.contextWindow) {
+    result.options = result.options || {};
+    result.options.num_ctx = caps.contextWindow;
+  }
 
   // Temperature
   if (body.temperature !== undefined) {

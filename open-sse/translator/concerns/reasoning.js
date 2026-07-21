@@ -22,3 +22,16 @@ export function extractReasoningText(delta) {
   }
   return "";
 }
+
+/**
+ * Strip inline <think>...</think> or <reasoning>...</reasoning> tags from text content.
+ */
+export function stripInlineThinkingTags(text) {
+  if (typeof text !== "string" || !text) return text;
+  return text
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+    .replace(/<\/?think>/gi, "")
+    .replace(/<\/?reasoning>/gi, "");
+}
+
