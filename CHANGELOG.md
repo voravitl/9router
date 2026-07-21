@@ -1,5 +1,10 @@
 # Unreleased
 
+# v0.10.20 (2026-07-21)
+
+## Fixes
+- **Translator (Provider Variance)**: resolve provider variance across Ollama (`num_ctx` dynamic injection via `resolveKnownContextWindow` preventing 2,048-token context truncation and VRAM OOM), xAI/Grok (stateful `processStreamThinkingTags` parser preventing inline `<think>` tag leaks and routing reasoning to Claude `thinking_delta`), and Claude 4.6+ 1M context capabilities scoping (closes #154) — voravitl
+
 # v0.10.19 (2026-07-20)
 
 ## Fixes

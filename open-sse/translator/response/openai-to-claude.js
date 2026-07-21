@@ -2,7 +2,7 @@ import { register } from "../index.js";
 import { FORMATS } from "../formats.js";
 import { ROLE, CLAUDE_BLOCK, MODEL_FALLBACK } from "../schema/index.js";
 import { fromOpenAIFinish } from "../concerns/finishReason.js";
-import { extractReasoningText } from "../concerns/reasoning.js";
+import { extractReasoningText, processStreamThinkingTags } from "../concerns/reasoning.js";
 import { accumulateToolName } from "../concerns/toolCall.js";
 
 // Legacy "proxy_" prefix used by older request translators. Response strips it
@@ -158,8 +158,30 @@ export function openaiToClaudeResponse(chunk, state) {
     });
   }
 
-  // Handle regular content
-  if (delta?.content) {
+  // Handle regular content (supporting inline <think> tags statefully across SSE chunks)
+  const { thinking: inlineThinking, text: cleanedText } = processStreamThinkingTags(delta?.content, state);
+
+  if (inlineThinking) {
+    stopTextBlock(state, results);
+
+    if (!state.thinkingBlockStarted) {
+      state.thinkingBlockIndex = state.nextBlockIndex++;
+      state.thinkingBlockStarted = true;
+      results.push({
+        type: "content_block_start",
+        index: state.thinkingBlockIndex,
+        content_block: { type: CLAUDE_BLOCK.THINKING, thinking: "" }
+      });
+    }
+
+    results.push({
+      type: "content_block_delta",
+      index: state.thinkingBlockIndex,
+      delta: { type: "thinking_delta", thinking: inlineThinking }
+    });
+  }
+
+  if (cleanedText) {
     stopThinkingBlock(state, results);
 
     if (!state.textBlockStarted) {
@@ -176,7 +198,7 @@ export function openaiToClaudeResponse(chunk, state) {
     results.push({
       type: "content_block_delta",
       index: state.textBlockIndex,
-      delta: { type: "text_delta", text: delta.content }
+      delta: { type: "text_delta", text: cleanedText }
     });
   }
 
