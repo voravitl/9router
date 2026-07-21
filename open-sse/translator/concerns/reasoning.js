@@ -24,18 +24,6 @@ export function extractReasoningText(delta) {
 }
 
 /**
- * Strip inline <think>...</think> or <reasoning>...</reasoning> tags from text content.
- */
-export function stripInlineThinkingTags(text) {
-  if (typeof text !== "string" || !text) return text;
-  return text
-    .replace(/<think>[\s\S]*?<\/think>/gi, "")
-    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
-    .replace(/<\/?think>/gi, "")
-    .replace(/<\/?reasoning>/gi, "");
-}
-
-/**
  * Stateful stream processor for inline <think>...</think> or <reasoning>...</reasoning> tags.
  * Preserves reasoning by separating thinking content from regular text across SSE chunks.
  *
