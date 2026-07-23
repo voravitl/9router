@@ -20,6 +20,11 @@ vi.mock("@/models", () => ({
   getProviderConnectionById: mocks.getProviderConnectionById,
 }));
 
+vi.mock("@/lib/db", () => ({
+  getSyncedModelsMap: vi.fn(async () => ({})),
+  stampSyncedModels: vi.fn(async () => ({})),
+}));
+
 vi.mock("@/sse/services/tokenRefresh", () => ({
   refreshGoogleToken: vi.fn(),
   refreshKiroToken: vi.fn(),
@@ -93,7 +98,7 @@ describe("Models route — generic OAuth refresh-and-retry", () => {
     const [, retryInit] = mocks.fetch.mock.calls[1];
     expect(retryInit.headers.Authorization).toBe("Bearer fresh-access-token");
 
-    expect(body.models).toEqual([{ id: "grok-4" }]);
+    expect(body.models).toEqual([{ id: "grok-4", lastSyncedAt: null, firstSeenAt: null }]);
   });
 
   it("does not attempt a refresh for an apikey provider (deepseek) with no refreshToken", async () => {
@@ -185,7 +190,7 @@ describe("Models route — generic OAuth refresh-and-retry", () => {
     const [retryUrl] = mocks.fetch.mock.calls[1];
     expect(retryUrl).toContain("key=fresh-key");
 
-    expect(body.models).toEqual([{ id: "gemini-pro" }]);
+    expect(body.models).toEqual([{ id: "gemini-pro", lastSyncedAt: null, firstSeenAt: null }]);
   });
 
   it("qwen: retries against the NEW shard URL from refreshed providerSpecificData.resourceUrl", async () => {
@@ -233,7 +238,7 @@ describe("Models route — generic OAuth refresh-and-retry", () => {
     expect(retryUrl).toBe("https://new-shard.example/v1/models");
     expect(retryInit.headers.Authorization).toBe("Bearer fresh-access-token");
 
-    expect(body.models).toEqual([{ id: "qwen3-coder" }]);
+    expect(body.models).toEqual([{ id: "qwen3-coder", lastSyncedAt: null, firstSeenAt: null }]);
   });
 
   it("github: is excluded from the generic refresh block (bearer is a Copilot token, not the OAuth token)", async () => {

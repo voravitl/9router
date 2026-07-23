@@ -13,7 +13,8 @@ import { resolveKimchiModels } from "open-sse/services/kimchiModels.js";
 import { resolveQoderModels } from "open-sse/services/qoderModels.js";
 import { resolveCopilotModels } from "open-sse/services/copilotModels.js";
 import { resolveClinepassModels } from "open-sse/services/clinepassModels.js";
-import { updateProviderCredentials } from "@/sse/services/tokenRefresh";
+import { updateProviderCredentials, refreshGoogleToken } from "@/sse/services/tokenRefresh";
+import { ANTIGRAVITY_OAUTH_CLIENT } from "open-sse/providers/shared.js";
 import { capabilitiesFromServiceKind, getCapabilitiesForModel, resolveKnownContextWindow } from "open-sse/providers/capabilities.js";
 import { toClaudeCodeModelId } from "@/shared/utils/claudeCodeModelId";
 
@@ -73,6 +74,42 @@ const LIVE_MODEL_RESOLVERS = {
       apiKey: conn.apiKey,
     });
     return result?.models?.length ? { models: result.models } : null;
+  },
+  antigravity: async (conn) => {
+    const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
+    let token = conn.accessToken;
+    const doFetch = async (tk) => {
+      const res = await fetch(GEMINI_CLI_MODELS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
+        body: JSON.stringify({}),
+      });
+      return res;
+    };
+    let res = await doFetch(token).catch(() => null);
+    if (res && (res.status === 401 || res.status === 403) && conn.refreshToken) {
+      const refreshed = await refreshGoogleToken(
+        conn.refreshToken,
+        ANTIGRAVITY_OAUTH_CLIENT.clientId,
+        ANTIGRAVITY_OAUTH_CLIENT.clientSecret
+      ).catch(() => null);
+      if (refreshed?.accessToken) {
+        token = refreshed.accessToken;
+        await updateProviderCredentials(conn.id, { accessToken: token }).catch(() => {});
+        res = await doFetch(token).catch(() => null);
+      }
+    }
+    if (!res?.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!Array.isArray(data?.models)) return null;
+    const models = data.models
+      .map((item) => {
+        const id = item?.id || item?.model || item?.name;
+        if (!id) return null;
+        return { id, name: item?.displayName || item?.name || id };
+      })
+      .filter(Boolean);
+    return models.length ? { models } : null;
   }
 };
 

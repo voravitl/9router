@@ -1,6 +1,11 @@
-# Unreleased
+# v0.10.21 (2026-07-23)
 
-# v0.10.20 (2026-07-21)
+## Fixes
+- **Antigravity (Live Model Resolver)**: fix `refreshed?.access_token` typo (`accessToken`) in Google token refresh for `antigravity` live model resolver in `/v1/models` route — voravitl
+- **Antigravity (MITM Defaults)**: restore `mandatory: true` flag on `gemini-3.5-flash-low` out-of-box default model slot in `cliTools.js` — voravitl
+
+## UI / UX
+- **Provider Detail (Sync Models)**: redesign `SyncProviderModelsModal` and `ModelsTable` with modern UI, quick filter tabs (`All`, `Available to add`, `Already added`), context window badges (`1M ctx`, `200k ctx`), and responsive selection counters — voravitl
 
 ## Fixes
 - **Translator (Provider Variance)**: resolve provider variance across Ollama (`num_ctx` dynamic injection via `resolveKnownContextWindow` preventing 2,048-token context truncation and VRAM OOM), xAI/Grok (stateful `processStreamThinkingTags` parser preventing inline `<think>` tag leaks and routing reasoning to Claude `thinking_delta`), and Claude 4.6+ 1M context capabilities scoping (closes #154) — voravitl

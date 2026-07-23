@@ -42,4 +42,6 @@ jobs:
             unit/dashboard-guard.test.js \
             unit/capabilities-grok-context.test.js \
             unit/tool-cap.test.js \
-            unit/provider-variance-fixes.test.js
+            unit/provider-variance-fixes.test.js \
+            unit/antigravity-mitm.test.js \
+            unit/antigravity-live-resolver.test.js

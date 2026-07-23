@@ -29,11 +29,8 @@ function fmtAbsolute(iso) {
 
 /**
  * Sortable table of available models for a provider detail page.
- * Replaces the old flex-wrap grid of ModelRow chips with a dense table that
- * supports sorting by last synced time, name, and context window.
- *
- * Per-row action affordances and hover-reveal behaviour mirror the original
- * ModelRow chip so existing UX is preserved.
+ * Displays models with context length pills, test status indicators,
+ * and quick action affordances.
  */
 export default function ModelsTable({
   models,
@@ -70,155 +67,178 @@ export default function ModelsTable({
 
   const headerCell = (field, label, align = "left") => (
     <th
-      className={`px-4 py-2.5 cursor-pointer select-none hover:bg-bg-subtle/50 whitespace-nowrap ${align === "right" ? "text-right" : ""}`}
+      className={`px-4 py-3 cursor-pointer select-none font-semibold transition-colors hover:bg-sidebar/80 hover:text-text-main whitespace-nowrap ${align === "right" ? "text-right" : ""}`}
       onClick={() => toggleSort(field)}
     >
-      {label}
-      <SortIcon field={field} currentSort={sortField} currentOrder={sortOrder} />
+      <div className={`inline-flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
+        <span>{label}</span>
+        <SortIcon field={field} currentSort={sortField} currentOrder={sortOrder} />
+      </div>
     </th>
   );
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm text-left">
-        <thead className="bg-bg-subtle/30 text-text-muted uppercase text-xs">
-          <tr>
-            {headerCell("name", "Model")}
-            {headerCell("context", "Context")}
-            {headerCell("releasedAt", "Released")}
-            <th className="px-4 py-2.5 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {sorted.length === 0 && (
+    <div className="overflow-hidden rounded-xl border border-border/80 bg-background shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-border/60 bg-sidebar/50 text-xs text-text-muted uppercase tracking-wider">
             <tr>
-              <td colSpan={4} className="px-4 py-6 text-center text-text-muted">
-                {emptyMessage}
-              </td>
+              {headerCell("name", "Model")}
+              {headerCell("context", "Context")}
+              {headerCell("releasedAt", "Released")}
+              <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
-          )}
-          {sorted.map((model) => {
-            const fullModel = fullModelFor ? fullModelFor(model) : model.fullModel;
-            const rowKey = fullModel || model.id;
-            const ctx = model.maxInputTokens || model.contextLength || (getContextWindow ? getContextWindow(fullModel) : 0) || 0;
-            const testStatus = modelTestResults[model.id];
-            const isTesting = testingModelIds && testingModelIds.has ? testingModelIds.has(model.id) : false;
-            const isCustom = !!isCustomMap[model.id];
-            const caps = capsMap[model.id];
-            const slash = typeof fullModel === "string" ? fullModel.indexOf("/") : -1;
-            const baseCopyText = slash > 0
-              ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow ? getContextWindow(fullModel) : undefined)
-              : fullModel;
-            const copyText = model.thinkingSuffix ? `${baseCopyText}(${model.thinkingSuffix})` : baseCopyText;
-            const borderColor = testStatus === "ok"
-              ? "border-green-500/40"
-              : testStatus === "error"
-              ? "border-red-500/40"
-              : "border-transparent";
-            const iconColor = testStatus === "ok"
-              ? "#22c55e"
-              : testStatus === "error"
-              ? "#ef4444"
-              : undefined;
-
-            return (
-              <tr key={rowKey} className="group hover:bg-bg-subtle/30 transition-colors">
-                <td className="px-4 py-2.5">
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span
-                      className="material-symbols-outlined shrink-0 text-base"
-                      style={iconColor ? { color: iconColor } : undefined}
-                    >
-                      {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <code className="max-w-[72vw] truncate rounded bg-sidebar px-1.5 py-0.5 font-mono text-xs text-text-muted sm:max-w-[360px]">{fullModel}</code>
-                      <span className="flex min-w-0 items-center text-[9px] gap-1 pl-1">
-                        {model.name && <span className="truncate text-[9px] italic text-text-muted/70">{model.name}</span>}
-                        <CapacityBadges caps={caps} colorOverride="text-text-muted/70" size={12} />
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-text-muted whitespace-nowrap">
-                  {ctx ? `${Math.round(ctx / 1000)}k` : "—"}
-                </td>
-                <td className="px-4 py-2.5 text-text-muted whitespace-nowrap">
-                  {model.releasedAt ? (
-                    <span title={fmtAbsolute(model.releasedAt)}>{fmtRelative(model.releasedAt)}</span>
-                  ) : (
-                    <span className="text-text-muted/60">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
-                  <div className="flex items-center justify-end gap-1">
-                    {onTest && (
-                      <div className="relative shrink-0 group/btn">
-                        <button
-                          onClick={() => onTest(model.id)}
-                          disabled={isTesting}
-                          className={`rounded p-0.5 text-text-muted transition-opacity hover:bg-sidebar hover:text-primary ${isTesting ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"}`}
-                        >
-                          <span className="material-symbols-outlined text-sm" style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}>
-                            {isTesting ? "progress_activity" : "science"}
-                          </span>
-                        </button>
-                        <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
-                          {isTesting ? "Testing..." : "Test"}
-                        </span>
-                      </div>
-                    )}
-                    <div className="relative shrink-0 group/btn">
-                      <button
-                        onClick={() => onCopy(copyText, `model-${model.id}`)}
-                        className="rounded p-0.5 text-text-muted hover:bg-sidebar hover:text-primary"
-                      >
-                        <span className="material-symbols-outlined text-sm">
-                          {copied === `model-${model.id}` ? "check" : "content_copy"}
-                        </span>
-                      </button>
-                      <span className="pointer-events-none absolute mt-1 top-5 left-1/2 -translate-x-1/2 text-[10px] text-text-muted whitespace-nowrap opacity-0 group-hover/btn:opacity-100 transition-opacity">
-                        {copied === `model-${model.id}` ? "Copied!" : "Copy"}
-                      </span>
-                    </div>
-                    {isCustom ? (
-                      <button
-                        onClick={() => onDeleteAlias(model.id)}
-                        className={`rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-500 ${onTest ? "opacity-100 sm:opacity-0 sm:group-hover:opacity-100" : "opacity-100"}`}
-                        title="Remove custom model"
-                      >
-                        <span className="material-symbols-outlined text-sm">close</span>
-                      </button>
-                    ) : onDisable ? (
-                      <button
-                        onClick={() => onDisable(model.id)}
-                        className={`rounded p-0.5 text-text-muted hover:bg-red-500/10 hover:text-red-500 ${onTest ? "opacity-100 sm:opacity-0 sm:group-hover:opacity-100" : "opacity-100"}`}
-                        title="Disable this model"
-                      >
-                        <span className="material-symbols-outlined text-sm">close</span>
-                      </button>
-                    ) : null}
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {sorted.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-text-muted">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[32px] text-text-muted/40">inbox</span>
+                    <span>{emptyMessage}</span>
                   </div>
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+            {sorted.map((model) => {
+              const fullModel = fullModelFor ? fullModelFor(model) : model.fullModel;
+              const rowKey = fullModel || model.id;
+              const ctx = model.maxInputTokens || model.contextLength || (getContextWindow ? getContextWindow(fullModel) : 0) || 0;
+              const testStatus = modelTestResults[model.id];
+              const isTesting = testingModelIds && testingModelIds.has ? testingModelIds.has(model.id) : false;
+              const isCustom = !!isCustomMap[model.id];
+              const caps = capsMap[model.id];
+              const slash = typeof fullModel === "string" ? fullModel.indexOf("/") : -1;
+              const baseCopyText = slash > 0
+                ? fullModelWithSuffix(fullModel.slice(0, slash), fullModel.slice(slash + 1), getContextWindow ? getContextWindow(fullModel) : undefined)
+                : fullModel;
+              const copyText = model.thinkingSuffix ? `${baseCopyText}(${model.thinkingSuffix})` : baseCopyText;
+
+              const iconColor = testStatus === "ok"
+                ? "#22c55e"
+                : testStatus === "error"
+                ? "#ef4444"
+                : undefined;
+
+              return (
+                <tr key={rowKey} className="group transition-colors hover:bg-sidebar/50">
+                  <td className="px-4 py-3">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <span
+                        className="material-symbols-outlined shrink-0 text-[18px] mt-0.5 transition-transform group-hover:scale-110"
+                        style={iconColor ? { color: iconColor } : undefined}
+                      >
+                        {testStatus === "ok" ? "check_circle" : testStatus === "error" ? "cancel" : "smart_toy"}
+                      </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <code className="max-w-[72vw] truncate rounded-md border border-border/60 bg-sidebar px-2 py-0.5 font-mono text-xs font-semibold text-text-main group-hover:border-primary/40 group-hover:text-primary transition-colors sm:max-w-[360px]">
+                            {fullModel}
+                          </code>
+                          {isCustom && (
+                            <span className="rounded bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                              custom
+                            </span>
+                          )}
+                        </div>
+                        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-muted/80 pl-0.5">
+                          {model.name && <span className="truncate italic">{model.name}</span>}
+                          <CapacityBadges caps={caps} colorOverride="text-text-muted/70" size={12} />
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-text-muted whitespace-nowrap">
+                    {ctx ? (
+                      <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-xs ${
+                        ctx >= 1000000
+                          ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 font-semibold"
+                          : ctx >= 200000
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          : "bg-sidebar text-text-muted border border-border/60"
+                      }`}>
+                        {ctx >= 1000000 ? `${(ctx / 1000000).toFixed(1).replace(/\.0$/, "")}M` : `${Math.round(ctx / 1000)}k`}
+                      </span>
+                    ) : (
+                      <span className="text-text-muted/50">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-text-muted whitespace-nowrap">
+                    {model.releasedAt ? (
+                      <span title={fmtAbsolute(model.releasedAt)} className="font-mono">{fmtRelative(model.releasedAt)}</span>
+                    ) : (
+                      <span className="text-text-muted/40">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      {onTest && (
+                        <button
+                          onClick={() => onTest(model.id)}
+                          disabled={isTesting}
+                          className={`rounded-lg p-1.5 text-text-muted transition-all hover:bg-primary/10 hover:text-primary ${
+                            isTesting ? "opacity-100" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          }`}
+                          title={isTesting ? "Testing..." : "Test model connection"}
+                        >
+                          <span
+                            className="material-symbols-outlined text-[16px]"
+                            style={isTesting ? { animation: "spin 1s linear infinite" } : undefined}
+                          >
+                            {isTesting ? "progress_activity" : "science"}
+                          </span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onCopy(copyText, `model-${model.id}`)}
+                        className="rounded-lg p-1.5 text-text-muted transition-all hover:bg-primary/10 hover:text-primary"
+                        title={copied === `model-${model.id}` ? "Copied!" : "Copy model name"}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {copied === `model-${model.id}` ? "check" : "content_copy"}
+                        </span>
+                      </button>
+                      {isCustom ? (
+                        <button
+                          onClick={() => onDeleteAlias(model.id)}
+                          className="rounded-lg p-1.5 text-text-muted transition-all hover:bg-red-500/10 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="Remove custom model"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      ) : onDisable ? (
+                        <button
+                          onClick={() => onDisable(model.id)}
+                          className="rounded-lg p-1.5 text-text-muted transition-all hover:bg-red-500/10 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          title="Disable this model"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">block</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
 ModelsTable.propTypes = {
-  models: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string,
-    lastSyncedAt: PropTypes.string,
-    firstSeenAt: PropTypes.string,
-    releasedAt: PropTypes.string,
-    maxInputTokens: PropTypes.number,
-    contextLength: PropTypes.number,
-  })).isRequired,
+  models: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      name: PropTypes.string,
+      lastSyncedAt: PropTypes.string,
+      firstSeenAt: PropTypes.string,
+      releasedAt: PropTypes.string,
+      maxInputTokens: PropTypes.number,
+      contextLength: PropTypes.number,
+    })
+  ).isRequired,
   getContextWindow: PropTypes.func,
   copied: PropTypes.string,
   onCopy: PropTypes.func.isRequired,
