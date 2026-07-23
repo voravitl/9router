@@ -75,8 +75,6 @@ export async function initializeApp() {
       g.signalHandlersRegistered = true;
     }
 
-    const settings = await getSettings();
-
     if (settings.tunnelEnabled) ensureCloudflared().catch(() => {});
 
     if (settings.mitmEnabled) {
