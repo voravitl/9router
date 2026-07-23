@@ -78,11 +78,17 @@ const LIVE_MODEL_RESOLVERS = {
   antigravity: async (conn) => {
     const GEMINI_CLI_MODELS_URL = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
     let token = conn.accessToken;
+    const projectId = conn.projectId || conn.providerSpecificData?.projectId;
+    const body = projectId ? { project: projectId } : {};
     const doFetch = async (tk) => {
       const res = await fetch(GEMINI_CLI_MODELS_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` },
-        body: JSON.stringify({}),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tk}`,
+          "User-Agent": "antigravity/1.107.0 darwin/arm64",
+        },
+        body: JSON.stringify(body),
       });
       return res;
     };

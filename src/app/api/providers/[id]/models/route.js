@@ -520,7 +520,7 @@ export async function GET(request, { params }) {
       });
     }
 
-    if (connection.provider === "gemini-cli") {
+    if (connection.provider === "gemini-cli" || connection.provider === "antigravity") {
       const { accessToken, refreshToken } = connection;
       if (!accessToken) {
         return NextResponse.json({ error: "No valid token found" }, { status: 401 });
@@ -529,14 +529,23 @@ export async function GET(request, { params }) {
       const projectId = connection.projectId || connection.providerSpecificData?.projectId;
       const body = projectId ? { project: projectId } : {};
 
+      const userAgent = connection.provider === "antigravity"
+        ? "antigravity/1.107.0 darwin/arm64"
+        : "google-api-nodejs-client/9.15.1";
+      const clientId = connection.provider === "antigravity"
+        ? ANTIGRAVITY_OAUTH_CLIENT.clientId
+        : GEMINI_CONFIG.clientId;
+      const clientSecret = connection.provider === "antigravity"
+        ? ANTIGRAVITY_OAUTH_CLIENT.clientSecret
+        : GEMINI_CONFIG.clientSecret;
+
       const fetchModels = async (token) => {
         const response = await fetch(GEMINI_CLI_MODELS_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`,
-            "User-Agent": "google-api-nodejs-client/9.15.1",
-            "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1"
+            "User-Agent": userAgent,
           },
           body: JSON.stringify(body)
         });
@@ -550,7 +559,7 @@ export async function GET(request, { params }) {
 
         // Attempt refresh on 401 when refresh token exists
         if (!response.ok && response.status === 401 && refreshToken) {
-          const refreshed = await refreshGoogleToken(refreshToken, GEMINI_CONFIG.clientId, GEMINI_CONFIG.clientSecret);
+          const refreshed = await refreshGoogleToken(refreshToken, clientId, clientSecret);
           if (refreshed?.accessToken) {
             await updateProviderCredentials(connection.id, {
               accessToken: refreshed.accessToken,

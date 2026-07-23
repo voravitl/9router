@@ -1,3 +1,8 @@
+# v0.10.24 (2026-07-23)
+
+## Fixes
+- **Antigravity (Model Sync)**: pass `{ project: projectId }` and `antigravity` User-Agent header in `fetchAvailableModels` requests, enabling full dynamic model listing in Sync Upstream Models UI — voravitl
+
 # v0.10.23 (2026-07-23)
 
 ## Fixes
