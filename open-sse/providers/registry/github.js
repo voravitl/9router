@@ -18,6 +18,7 @@ export default {
   transport: {
     baseUrl: "https://api.githubcopilot.com/chat/completions",
     responsesUrl: "https://api.githubcopilot.com/responses",
+    messagesUrl: "https://api.githubcopilot.com/v1/messages",
     headers: {
       "copilot-integration-id": "vscode-chat",
       "editor-version": "vscode/1.110.0",

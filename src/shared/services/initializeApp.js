@@ -14,7 +14,6 @@ import {
   WATCHDOG_INTERVAL_MS, NETWORK_CHECK_INTERVAL_MS, VIRTUAL_IFACE_REGEX,
 } from "@/lib/tunnel";
 import { getMitmStatus, startMitm, loadEncryptedPassword, initDbHooks, restoreToolDNS, removeAllDNSEntriesSync } from "@/mitm/manager";
-import { startQuotaAutoPing } from "@/shared/services/quotaAutoPing";
 import { syncToJson as syncMitmAliasCache } from "@/lib/mitmAliasCache";
 
 // Inject correct paths and DB hooks into manager.js (CJS) from ESM context
@@ -76,30 +75,43 @@ export async function initializeApp() {
       g.signalHandlersRegistered = true;
     }
 
-    ensureCloudflared().catch(() => {});
+    const settings = await getSettings();
 
-    // Sync mitmAlias DB → JSON cache so standalone MITM server can read it
-    syncMitmAliasCache().catch(() => {});
+    if (settings.tunnelEnabled) ensureCloudflared().catch(() => {});
+
+    if (settings.mitmEnabled) {
+      // Sync mitmAlias DB → JSON cache so standalone MITM server can read it
+      syncMitmAliasCache().catch(() => {});
+      autoStartMitm(settings);
+    }
 
     // Auto-respawn tunnel when cloudflared exits unexpectedly (e.g. network change drop)
     setTunnelUnexpectedExitCallback(() => {
       safeRestartTunnel("unexpected-exit").catch(() => {});
     });
 
-    startWatchdog();
-    startNetworkMonitor();
-    autoStartMitm();
-    startQuotaAutoPing();
+    configureTunnelMonitoring(settings);
+
+    if (hasQuotaAutoPingEnabled(settings)) {
+      import("@/shared/services/quotaAutoPing")
+        .then(({ startQuotaAutoPing }) => startQuotaAutoPing())
+        .catch((e) => console.log("[AutoPing] scheduler start failed:", e.message));
+    }
   } catch (error) {
     console.error("[InitApp] Error:", error);
   }
 }
 
-async function autoStartMitm() {
+function hasQuotaAutoPingEnabled(settings) {
+  return [settings?.claudeAutoPing, settings?.codexAutoPing]
+    .some((config) => Object.values(config?.connections || {}).some(Boolean));
+}
+
+async function autoStartMitm(initialSettings) {
   if (g.mitmStartInProgress) return;
   g.mitmStartInProgress = true;
   try {
-    const settings = await getSettings();
+    const settings = initialSettings || await getSettings();
     if (!settings.mitmEnabled) return;
     const mitmStatus = await getMitmStatus();
     if (mitmStatus.running) return;
@@ -277,6 +289,30 @@ function startNetworkMonitor() {
   }, NETWORK_CHECK_INTERVAL_MS);
 
   if (g.networkMonitorInterval.unref) g.networkMonitorInterval.unref();
+}
+
+function stopWatchdog() {
+  if (!g.watchdogInterval) return;
+  clearInterval(g.watchdogInterval);
+  g.watchdogInterval = null;
+}
+
+function stopNetworkMonitor() {
+  if (!g.networkMonitorInterval) return;
+  clearInterval(g.networkMonitorInterval);
+  g.networkMonitorInterval = null;
+  g.lastNetworkFingerprint = null;
+  g.lastOnline = null;
+}
+
+export function configureTunnelMonitoring(settings) {
+  if (settings?.tunnelEnabled || settings?.tailscaleEnabled) {
+    startWatchdog();
+    startNetworkMonitor();
+    return;
+  }
+  stopWatchdog();
+  stopNetworkMonitor();
 }
 
 export default initializeApp;

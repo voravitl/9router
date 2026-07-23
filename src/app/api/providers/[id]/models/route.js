@@ -151,9 +151,9 @@ const PROVIDER_MODELS_CONFIG = {
     parseResponse: (data) => data.data || []
   },
   codex: {
-    url: "https://chatgpt.com/backend-api/codex/models?client_version=1.0.0",
+    url: "https://chatgpt.com/backend-api/codex/models?client_version=0.144.6",
     method: "GET",
-    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    headers: { "Content-Type": "application/json", "Accept": "application/json", "originator": "codex_cli_rs" },
     authHeader: "Authorization",
     authPrefix: "Bearer ",
     parseResponse: parseCodexModels

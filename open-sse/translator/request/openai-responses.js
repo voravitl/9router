@@ -189,6 +189,7 @@ export function openaiResponsesToOpenAIRequest(model, body, stream, credentials)
   delete result.prompt_cache_key;
   delete result.store;
   delete result.reasoning;
+  delete result.client_metadata;
 
   return result;
 }
@@ -319,6 +320,7 @@ export function openaiToOpenAIResponsesRequest(model, body, stream, credentials)
   if (body.top_p !== undefined) result.top_p = body.top_p;
   if (body.reasoning !== undefined) result.reasoning = body.reasoning;
   if (body.reasoning_effort !== undefined) result.reasoning = { effort: body.reasoning_effort, summary: "auto" };
+  if (body.service_tier !== undefined) result.service_tier = body.service_tier;
 
   return result;
 }

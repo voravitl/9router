@@ -189,8 +189,9 @@ function applyFormat(fmt, body, cfg, caps) {
     }
     case "claude-adaptive": {
       if (none && canDisable) { body.thinking = { type: "disabled" }; break; }
+      body.thinking = { type: "adaptive" };
       const level = toLevel(eff);
-      body.output_config = { effort: level === "xhigh" ? "high" : level };
+      if (level) body.output_config = { effort: level === "xhigh" ? "high" : level };
       break;
     }
     case "claude-budget": {
