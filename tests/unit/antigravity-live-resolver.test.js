@@ -137,4 +137,61 @@ describe("Antigravity live model resolver in v1/models", () => {
     });
     expect(mocks.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("resolves models when Google returns object-map shape and filters out internal models", async () => {
+    mocks.getProviderConnections.mockResolvedValue([
+      {
+        id: "conn-ag-1",
+        provider: "antigravity",
+        isActive: true,
+        accessToken: "ag-access-token",
+      },
+    ]);
+
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        models: {
+          "gemini-3.5-flash-low": { displayName: "Gemini 3.5 Flash (Medium)", isInternal: false },
+          "internal-model-secret": { displayName: "Secret Model", isInternal: true },
+        },
+      }),
+    });
+
+    const { GET } = await import("../../src/app/api/v1/models/route.js");
+    const res = await GET(new Request("http://localhost/v1/models"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const ids = (body.data || []).map((m) => m.id);
+
+    expect(ids).toContain("ag/gemini-3.5-flash-low");
+    expect(ids).not.toContain("ag/internal-model-secret");
+  });
+
+  it("falls back to default antigravity models if live fetch and refresh fail", async () => {
+    mocks.getProviderConnections.mockResolvedValue([
+      {
+        id: "conn-ag-1",
+        provider: "antigravity",
+        isActive: true,
+        accessToken: "stale-access-token",
+        refreshToken: "ag-refresh-token",
+      },
+    ]);
+
+    mocks.fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    });
+
+    mocks.refreshGoogleToken.mockRejectedValue(new Error("Refresh failed"));
+
+    const { GET } = await import("../../src/app/api/v1/models/route.js");
+    const res = await GET(new Request("http://localhost/v1/models"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const ids = (body.data || []).map((m) => m.id);
+
+    expect(ids).toContain("ag/gemini-3.5-flash-low");
+  });
 });

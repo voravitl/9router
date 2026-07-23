@@ -101,15 +101,24 @@ const LIVE_MODEL_RESOLVERS = {
     }
     if (!res?.ok) return null;
     const data = await res.json().catch(() => null);
-    if (!Array.isArray(data?.models)) return null;
-    const models = data.models
-      .map((item) => {
-        const id = item?.id || item?.model || item?.name;
-        if (!id) return null;
-        return { id, name: item?.displayName || item?.name || id };
-      })
-      .filter(Boolean);
-    return models.length ? { models } : null;
+    let parsed = [];
+    if (Array.isArray(data?.models)) {
+      parsed = data.models
+        .map((item) => {
+          const id = item?.id || item?.model || item?.name;
+          if (!id) return null;
+          return { id, name: item?.displayName || item?.name || id };
+        })
+        .filter(Boolean);
+    } else if (data?.models && typeof data.models === "object") {
+      parsed = Object.entries(data.models)
+        .filter(([, info]) => !info?.isInternal)
+        .map(([id, info]) => ({
+          id,
+          name: info?.displayName || info?.name || id,
+        }));
+    }
+    return parsed.length ? { models: parsed } : null;
   }
 };
 
