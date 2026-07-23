@@ -548,7 +548,28 @@ export class KiroExecutor extends BaseExecutor {
     if (!response.body) {
       return new Response(SSE_DONE, { status: response.status, headers: { "Content-Type": "text/event-stream" } });
     }
-    const transformedStream = response.body.pipeThrough(transformStream);
+
+    // Periodic keepalive injector: fires every 30s independently of upstream
+    // activity so pipeWithDisconnect's stall watchdog (360s) stays alive even
+    // when Kiro upstream is silent during long thinking/reasoning phases.
+    const keepaliveBytes = new TextEncoder().encode(": ka\n\n");
+    let keepaliveTimer = null;
+    const stopKeepalive = () => { if (keepaliveTimer) { clearInterval(keepaliveTimer); keepaliveTimer = null; } };
+    const keepaliveInjector = new TransformStream({
+      start(controller) {
+        keepaliveTimer = setInterval(() => {
+          try { controller.enqueue(keepaliveBytes); } catch { stopKeepalive(); }
+        }, 30_000);
+      },
+      transform(chunk, controller) {
+        controller.enqueue(chunk);
+      },
+      flush() { stopKeepalive(); },
+      cancel() { stopKeepalive(); },
+      abort() { stopKeepalive(); }
+    });
+
+    const transformedStream = response.body.pipeThrough(transformStream).pipeThrough(keepaliveInjector);
 
     return new Response(transformedStream, {
       status: response.status,
