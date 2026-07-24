@@ -5,7 +5,7 @@ const CHARS_PER_TOKEN = 3.5;
 const FIXED_IMAGE_TOKENS = 1000;
 
 /**
- * Estimate token count for request body
+ * Estimate token count for request body (supports OpenAI, Claude, and Gemini shapes)
  */
 export function estimateRequestTokens(body) {
   if (!body) return 0;
@@ -26,12 +26,14 @@ export function estimateRequestTokens(body) {
     }
   };
 
-  const messages = body.messages || body.input || [];
+  const messages = body.messages || body.input || body.contents || body.request?.contents || [];
   for (const msg of messages) {
     if (!msg) continue;
-    if (msg.role === "system" && typeof msg.content === "string") textLength += msg.content.length;
-    else processContent(msg.content);
+    const role = msg.role || (msg.author ? String(msg.author) : "");
+    if (role === "system" && typeof msg.content === "string") textLength += msg.content.length;
+    else processContent(msg.content || msg.parts);
     if (msg.reasoning_content) textLength += msg.reasoning_content.length;
+    if (Array.isArray(msg.tool_calls)) textLength += JSON.stringify(msg.tool_calls).length;
   }
 
   if (Array.isArray(body.tools)) {
@@ -108,7 +110,15 @@ export function groupMessageTurns(messages) {
  */
 export function pruneMessageHistory(body, provider, model) {
   if (!body || typeof body !== "object") return body;
-  const messagesKey = Array.isArray(body.messages) ? "messages" : Array.isArray(body.input) ? "input" : null;
+  const messagesKey = Array.isArray(body.messages)
+    ? "messages"
+    : Array.isArray(body.input)
+    ? "input"
+    : Array.isArray(body.contents)
+    ? "contents"
+    : Array.isArray(body.request?.contents)
+    ? "request.contents"
+    : null;
   if (!messagesKey) return body;
 
   const caps = getCapabilitiesForModel(provider, model);

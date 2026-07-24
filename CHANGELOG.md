@@ -1,3 +1,9 @@
+# v0.10.30 (2026-07-24)
+
+## Features & Improvements (Comprehensive HealthStore Wiring & Multi-Format Pruning)
+- **HealthStore Active Wiring**: wired `healthStore` into `checkFallbackError` and `isAccountUnavailable` to actively isolate failing nodes and enforce layered L1->L2->L3 circuit breakers — voravitl
+- **Multi-Format Pruner Token Estimator**: added OpenAI `tool_calls` JSON and Gemini `contents` / `request.contents` support to `estimateRequestTokens` and `pruneMessageHistory` — voravitl
+
 # v0.10.29 (2026-07-24)
 
 ## Fixes & Improvements (Adversarial Sub-Agent Audit Refinements)

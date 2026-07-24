@@ -1,4 +1,5 @@
 import { ERROR_RULES, BACKOFF_CONFIG, TRANSIENT_COOLDOWN_MS } from "../config/errorConfig.js";
+import { healthStore } from "./healthStore.js";
 
 /**
  * Calculate exponential backoff cooldown for rate limits (429)
@@ -18,9 +19,19 @@ export function getQuotaCooldown(backoffLevel = 0) {
  * @param {number} status - HTTP status code
  * @param {string} errorText - Error message text
  * @param {number} backoffLevel - Current backoff level for exponential backoff
+ * @param {string} [providerId] - Optional provider ID for healthStore circuit breaker
+ * @param {string} [nodeId] - Optional node ID for healthStore circuit breaker
  * @returns {{ shouldFallback: boolean, cooldownMs: number, newBackoffLevel?: number }}
  */
-export function checkFallbackError(status, errorText, backoffLevel = 0) {
+export function checkFallbackError(status, errorText, backoffLevel = 0, providerId = null, nodeId = null) {
+  if (providerId || nodeId) {
+    if (status >= 500) {
+      healthStore.recordError(providerId, nodeId, status);
+    } else if (status === 200) {
+      healthStore.recordSuccess(providerId, nodeId);
+    }
+  }
+
   const lowerError = errorText
     ? (typeof errorText === "string" ? errorText : JSON.stringify(errorText)).toLowerCase()
     : "";
@@ -28,10 +39,6 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
   for (const rule of ERROR_RULES) {
     // Text-based rule: match substring in error message
     if (rule.text && lowerError && lowerError.includes(rule.text)) {
-      // noFallback: this error is not account-specific — rotating to another
-      // account rebuilds the identical request and hits the same wall (e.g. a
-      // gateway input-size limit). Surface it to the client instead of burning
-      // every account. Do not lock the account (cooldownMs 0).
       if (rule.noFallback) return { shouldFallback: false, cooldownMs: 0 };
       if (rule.backoff) {
         const newLevel = Math.min(backoffLevel + 1, BACKOFF_CONFIG.maxLevel);
@@ -55,9 +62,11 @@ export function checkFallbackError(status, errorText, backoffLevel = 0) {
 }
 
 /**
- * Check if account is currently unavailable (cooldown not expired)
+ * Check if account or node/provider is currently unavailable (cooldown not expired or CB open)
  */
-export function isAccountUnavailable(unavailableUntil) {
+export function isAccountUnavailable(unavailableUntil, providerId = null, nodeId = null) {
+  if (providerId && healthStore.isProviderOpen(providerId)) return true;
+  if (nodeId && healthStore.isNodeOpen(nodeId, providerId)) return true;
   if (!unavailableUntil) return false;
   return new Date(unavailableUntil).getTime() > Date.now();
 }
