@@ -1,3 +1,10 @@
+# v0.10.31 (2026-07-24)
+
+## Features & Improvements (Token Savings DB Metering & Dual-Average UI)
+- **Context Pruner DB Observability**: captured `prunerStats` (`tokensBefore`, `tokensAfter`, `tokensSaved`, `omittedMessages`) in `pruneMessageHistory` and stored in `requestDetails` JSON blob without DB migration — voravitl
+- **Sanitized Execution Payload**: stripped internal tracking keys (`_pruned`, `_omittedTurns`, `_prunerStats`) before upstream executor dispatch — voravitl
+- **Dashboard Dual-Average UI**: added Context Pruner card and dual-average explanation note to Token Saver Dashboard — voravitl
+
 # v0.10.30 (2026-07-24)
 
 ## Features & Improvements (Comprehensive HealthStore Wiring & Multi-Format Pruning)

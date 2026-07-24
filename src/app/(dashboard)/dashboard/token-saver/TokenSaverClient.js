@@ -453,7 +453,13 @@ export default function TokenSaverClient() {
                     <p className="text-xl font-semibold">{fmtNum(summary?.period?.scanned)}</p>
                   </div>
                   <div className="rounded-lg bg-surface-2/40 p-3">
-                    <p className="text-[10px] uppercase text-text-muted">Requests saved</p>
+                    <p className="text-[10px] uppercase text-text-muted">Context Pruner</p>
+                    <p className="text-xl font-semibold">
+                      −{fmtNum(summary?.pruner?.tokensSaved || 0)} <span className="text-sm font-normal text-text-muted">tok</span>
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-surface-2/40 p-3">
+                    <p className="text-[10px] uppercase text-text-muted">RTK Saved Requests</p>
                     <p className="text-xl font-semibold">
                       {fmtNum(rtk?.requestsWithSavings)}
                       <span className="text-sm font-normal text-text-muted"> / {fmtNum(rtk?.requestsWithStats)}</span>
@@ -463,10 +469,9 @@ export default function TokenSaverClient() {
                     <p className="text-[10px] uppercase text-text-muted">Headroom</p>
                     <p className="text-xl font-semibold">−{fmtNum(hr?.tokensSaved)} <span className="text-sm font-normal text-text-muted">tok</span></p>
                   </div>
-                  <div className="rounded-lg bg-surface-2/40 p-3">
-                    <p className="text-[10px] uppercase text-text-muted">Caveman / Ponytail</p>
-                    <p className="text-xs text-text-muted mt-1 leading-4">Prompt only — no graph meter</p>
-                  </div>
+                </div>
+                <div className="mt-3 rounded-lg border border-border/40 bg-surface-2/20 p-2.5 text-[11px] text-text-muted leading-4">
+                  💡 <strong>Dual-Average Note:</strong> Overall % reflects total window (short + long chats). Heavy requests with large tool outputs or long context yield <strong>60–90% reduction</strong> on active pruning/RTK.
                 </div>
                 {summary?.recent?.length ? (
                   <ul className="mt-3 space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">

@@ -65,4 +65,25 @@ describe("getTokenSaveSummary", () => {
     expect(summary.series.some((d) => d.date === "2026-07-13" && d.saved > 0)).toBe(true);
     expect(Array.isArray(summary.headroom.topSkipReasonsRecent24h)).toBe(true);
   });
+
+  it("aggregates prunerStats correctly in getTokenSaveSummary", async () => {
+    mocks.get.mockReturnValue({ c: 1 });
+    mocks.all.mockReturnValue([
+      {
+        data: JSON.stringify({
+          id: "p1",
+          timestamp: "2026-07-13T02:00:00.000Z",
+          prunerStats: { tokensBefore: 10000, tokensAfter: 2000, tokensSaved: 8000, omittedMessages: 5, pruned: true }
+        })
+      }
+    ]);
+
+    const summary = await getTokenSaveSummary({ startDate: "2026-07-01", endDate: "2026-07-14" });
+    expect(summary.pruner.requestsWithStats).toBe(1);
+    expect(summary.pruner.requestsWithSavings).toBe(1);
+    expect(summary.pruner.tokensBefore).toBe(10000);
+    expect(summary.pruner.tokensSaved).toBe(8000);
+    expect(summary.pruner.omittedMessages).toBe(5);
+    expect(summary.pruner.pctSaved).toBe(80);
+  });
 });

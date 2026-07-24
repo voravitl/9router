@@ -60,4 +60,22 @@ describe("pruner: tool-pair aware atomic context pruner", () => {
     expect(groups.length).toBe(3); // system, u1+assistant+user_tool_result, u2
     expect(groups[1].messages.length).toBe(3);
   });
+
+  it("attaches valid _prunerStats to body on pruning", () => {
+    const messages = [
+      { role: "system", content: "sys" },
+      { role: "user", content: "u1 ".repeat(120000) },
+      { role: "assistant", content: "a1" },
+      { role: "user", content: "u2 ".repeat(120000) },
+      { role: "assistant", content: "a2" },
+      { role: "user", content: "u3 (trailing)" }
+    ];
+    const body = { messages };
+    const result = pruneMessageHistory(body, "codebuddy-cn", "glm-5.2");
+    expect(result._prunerStats).toBeDefined();
+    expect(result._prunerStats.tokensBefore).toBeGreaterThan(0);
+    expect(result._prunerStats.tokensAfter).toBeGreaterThan(0);
+    expect(typeof result._prunerStats.tokensSaved).toBe("number");
+    expect(result._prunerStats.pruned).toBe(true);
+  });
 });

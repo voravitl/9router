@@ -101,6 +101,7 @@ async function flushToDatabase() {
             providerResponse: truncateField(item.providerResponse, config.maxJsonSize),
             response: truncateField(item.response, config.maxJsonSize),
             // Token-saver benchmark fields (must survive flush — dropped previously)
+            prunerStats: item.prunerStats || null,
             rtkStats: item.rtkStats || null,
             headroomStats: item.headroomStats || null,
             headroomDiagnostics: item.headroomDiagnostics || null,
@@ -136,7 +137,7 @@ export async function saveRequestDetail(detail) {
 
   // Flush immediately when token-saver stats or final usage are present so
   // playground/benchmark UIs can read them without waiting the batch interval.
-  const hasTokenSaveStats = Boolean(detail?.rtkStats || detail?.headroomStats || detail?.headroomDiagnostics);
+  const hasTokenSaveStats = Boolean(detail?.prunerStats || detail?.rtkStats || detail?.headroomStats || detail?.headroomDiagnostics);
   const hasUsage = Boolean(detail?.tokens && (detail.tokens.prompt_tokens || detail.tokens.completion_tokens || detail.tokens.input_tokens || detail.tokens.output_tokens));
   const forceFlush = hasTokenSaveStats || (detail?.status === "success" && hasUsage);
 
@@ -219,6 +220,14 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
     [...params, safeLimit],
   );
 
+  const pruner = {
+    requestsWithStats: 0,
+    requestsWithSavings: 0,
+    tokensBefore: 0,
+    tokensAfter: 0,
+    tokensSaved: 0,
+    omittedMessages: 0,
+  };
   const rtk = {
     requestsWithStats: 0,
     requestsWithSavings: 0,
@@ -259,10 +268,24 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
 
   for (const row of rows) {
     const detail = parseJson(row.data, {});
+    const ps = detail?.prunerStats;
     const rtkStats = detail?.rtkStats;
     const hs = detail?.headroomStats;
     const diag = detail?.headroomDiagnostics || {};
     const dayKey = (detail.timestamp && String(detail.timestamp).slice(0, 10)) || "unknown";
+
+    let prunerTokensSaved = 0;
+    if (ps && typeof ps.tokensBefore === "number") {
+      pruner.requestsWithStats += 1;
+      pruner.tokensBefore += ps.tokensBefore || 0;
+      pruner.tokensAfter += ps.tokensAfter || 0;
+      prunerTokensSaved = ps.tokensSaved || 0;
+      if (prunerTokensSaved > 0) {
+        pruner.requestsWithSavings += 1;
+        pruner.tokensSaved += prunerTokensSaved;
+      }
+      pruner.omittedMessages += ps.omittedMessages || 0;
+    }
 
     let rtkSaved = 0;
     let rtkPct = 0;
@@ -356,6 +379,10 @@ export async function getTokenSaveSummary({ startDate, endDate, limit = 2000 } =
       scanned: rows.length,
       totalInWindow,
       truncated: totalInWindow > rows.length,
+    },
+    pruner: {
+      ...pruner,
+      pctSaved: pruner.tokensBefore > 0 ? Math.round((pruner.tokensSaved / pruner.tokensBefore) * 100) : 0,
     },
     rtk: {
       ...rtk,

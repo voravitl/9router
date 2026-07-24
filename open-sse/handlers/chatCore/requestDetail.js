@@ -78,6 +78,7 @@ export function buildRequestDetail(base, overrides = {}) {
     providerResponse: base.providerResponse || null,
     response: base.response || {},
     status: base.status || "success",
+    prunerStats: base.prunerStats || null,
     rtkStats: base.rtkStats || null,
     headroomStats: base.headroomStats || null,
     headroomDiagnostics: base.headroomDiagnostics || null,

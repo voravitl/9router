@@ -176,8 +176,14 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     delete translatedBody.tools;
   }
 
+  let prunerStats = null;
+
   // Context Pruner: atomic middle-out pruning when prompt tokens exceed model context budget
   pruneMessageHistory(translatedBody, provider, upstreamModel);
+  prunerStats = translatedBody._prunerStats || null;
+  delete translatedBody._pruned;
+  delete translatedBody._omittedTurns;
+  delete translatedBody._prunerStats;
 
   // RTK: compress tool_result content
   rtkStats = compressMessages(translatedBody, rtkEnabled);
@@ -276,6 +282,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       providerRequest: translatedBody || null,
       response: { error: error.message || String(error), status: error.name === "AbortError" ? 499 : 502, thinking: null },
       status: "error",
+      prunerStats,
       rtkStats,
       headroomStats,
       headroomDiagnostics
@@ -325,6 +332,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
       providerRequest: finalBody || translatedBody || null,
       response: { error: message, status: statusCode, thinking: null },
       status: "error",
+      prunerStats,
       rtkStats,
       headroomStats,
       headroomDiagnostics
@@ -338,7 +346,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
 
   const sharedCtx = {
     provider, model, body, stream, translatedBody, finalBody, requestStartTime, connectionId, apiKey, clientRawRequest, onRequestSuccess,
-    rtkStats, headroomStats, headroomDiagnostics, detailId, clientModel,
+    prunerStats, rtkStats, headroomStats, headroomDiagnostics, detailId, clientModel,
   };
   const appendLog = (extra) => appendRequestLog({ model, provider, connectionId, ...extra }).catch(() => { });
   const trackDone = () => trackPendingRequest(model, provider, connectionId, false);

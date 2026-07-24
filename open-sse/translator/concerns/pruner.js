@@ -130,6 +130,14 @@ export function pruneMessageHistory(body, provider, model) {
   const budget = Math.max(Math.floor(contextWindow * 0.7), rawBudget);
 
   const initialEstimate = estimateRequestTokens(body);
+  body._prunerStats = {
+    tokensBefore: initialEstimate,
+    tokensAfter: initialEstimate,
+    tokensSaved: 0,
+    omittedMessages: 0,
+    pruned: false
+  };
+
   if (initialEstimate <= budget) return body;
 
   const originalMessages = body[messagesKey];
@@ -173,7 +181,18 @@ export function pruneMessageHistory(body, provider, model) {
   ];
 
   body[messagesKey] = finalMessages;
-  body._pruned = true;
-  body._omittedTurns = omittedCount;
+  const tokensAfter = estimateRequestTokens(body);
+  const tokensSaved = Math.max(0, initialEstimate - tokensAfter);
+  body._prunerStats = {
+    tokensBefore: initialEstimate,
+    tokensAfter,
+    tokensSaved,
+    omittedMessages: omittedCount,
+    pruned: omittedCount > 0
+  };
+  if (omittedCount > 0) {
+    body._pruned = true;
+    body._omittedTurns = omittedCount;
+  }
   return body;
 }
